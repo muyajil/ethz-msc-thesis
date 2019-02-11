@@ -1,0 +1,21 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+certifi = "*"
+numexpr = "*"
+numpy = "*"
+pandas = "*"
+python-dateutil = "*"
+pytz = "*"
+scipy = "*"
+six = "*"
+tables = "*"
+Theano = "*"
+
+[requires]
+python_version = "3.6"
