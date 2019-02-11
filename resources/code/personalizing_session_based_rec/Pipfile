@@ -16,6 +16,7 @@ scipy = "*"
 six = "*"
 tables = "*"
 Theano = "*"
+pylint = "*"
 
 [requires]
 python_version = "3.6"
