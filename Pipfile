@@ -11,6 +11,7 @@ pandas = "*"
 ipykernel = "*"
 google-cloud-bigquery = "*"
 google-cloud-storage = "*"
+dg-ml-core = {file = "https://storage.googleapis.com/dg-ml-packages/dg_ml_core.tar.gz"}
 
 [requires]
 python_version = "3.6"
