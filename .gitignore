@@ -2,3 +2,9 @@
 **/.vscode/*
 *.csv
 *.json
+*.aux
+*.bbl
+*.log
+*.synctex.gz
+*.blg
+

@@ -1,0 +1,99 @@
+\documentclass[12pt]{scrartcl}
+
+\usepackage[usenames,dvips]{color}
+\usepackage{fancybox}
+\usepackage{tikz}
+\usepackage{ETHlogo}
+%\usepackage{paralist}
+%\usepackage{hyperref}
+\usepackage{amsthm}
+\usepackage{ amssymb }
+
+
+
+\pagestyle{empty}{}
+
+
+\renewcommand{\maketitle}
+  {\setlength{\unitlength}{1mm}
+  \begin{minipage}{\textwidth}
+    \ETHlogo[55mm]\hfill%\includegraphics[scale=.45]{infsec}
+  \end{minipage}
+  \begin{center}
+    {\color{Gray} \rule{.8\textwidth}{.5pt}}
+  \end{center}
+  \begin{center}
+    {\Large Master Thesis Proposal}\\
+    \vspace{10pt}
+    {\huge \textbf {Applying GAN Training to Recommender Systems}}\\
+    \vspace{7pt}
+    % Contact: 
+    \begin{tabular}{rl}
+      Student: & Mohammed Ajil \\
+      Supervisors: &  Bojan Karlas \\
+      Professor: & Ce Zhang \\
+    \end{tabular}
+    % \proposal@contact
+    \vspace{-2pt}
+  \end{center}
+
+  \begin{center}
+    {\color{Gray} \rule{.8\textwidth}{.5pt}}
+  \end{center}
+}
+
+
+\begin{document}
+\maketitle
+
+\section{Context and Objective}
+Recommender Systems are a discipline in machine learning which always have a lot of attention. The reason is that more and more Online Shops exist which want to provide a personalized shopping experience to their users, to drive up sales.
+%
+Many approaches exists, and there are new systems being devised all the time.
+%
+Recommender Systems usually try to assign a score to items, personalized for each user, based on the users preferences.
+%
+The current state of the art system proposed in~\cite{hierarchical} relies on Recurrent Neural Networks to predict which item a user would view next.
+%
+However there are limitations inherent to the training of RNNs.
+%
+This phenomenon is known as Teacher Forcing, in principle, the problem is that the training and prediction setup differs for the model, resulting in different distributions of the produced outputs in the different setups.
+%
+Therefore it is difficult to make conclusions on the performance of such a model, using the insights from training.
+%
+We would like to apply a more robust training the the model proposed in~\cite{hierarchical}.
+%
+Such an algorithm was proposed in~\cite{profforce}, essentially we add a discriminator which will try to distinguish from which setup an output sequence was produced.
+%
+The idea is that we want to have the distribution of the output sequences as close as possible to the sequences produced in training mode.
+%
+In a second step we want to improve the proposed system in~\cite{hierarchical} by using product embeddings, which capture the semantics of products, instead of just product ids.
+%
+Such an embedding was proposed in~\cite{prod2vec}, where we essentially apply the well known word2vec algorithm to products.
+%
+Finally we will test this system in a production environment.
+%
+\section{Schedule}
+%
+\begin{itemize}
+ \item Implement the model from~\cite{hierarchical} and verify results from the paper.
+ \item Research different methods to train RNNs more robustly.
+ \item Implement more robust training method and compare performance.
+ \item Implement the model in~\cite{prod2vec} and verify results.
+ \item Modify model architecture to be able to use product embeddings.
+ \item Test performance of the system in a production environment and compare results to unmodified model.
+\end{itemize}
+
+\bibliographystyle{abbrv}
+\bibliography{main}
+
+
+\vfill
+
+\hfill \today
+
+\hfill Prof. Ce Zhang
+
+
+
+\end{document}
