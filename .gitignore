@@ -9,3 +9,5 @@
 *.blg
 *.toc
 *.out
+writeup/build/*
+*.dvi
