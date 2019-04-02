@@ -9,6 +9,8 @@ verify_ssl = true
 tensorflow = "*"
 google-cloud = "*"
 pylint = "*"
+dg-ml-core = {file = "https://storage.googleapis.com/dg-ml-packages/dg_ml_core.tar.gz"}
+google-cloud-storage = "*"
 
 [requires]
 python_version = "3.6"
