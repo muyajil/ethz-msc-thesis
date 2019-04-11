@@ -13,6 +13,8 @@ dg-ml-core = {file = "https://storage.googleapis.com/dg-ml-packages/dg_ml_core.t
 google-cloud-storage = "*"
 pep8 = "*"
 autopep8 = "*"
+ipykernel = "*"
+rope = "*"
 
 [requires]
 python_version = "3.6"

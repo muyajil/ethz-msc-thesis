@@ -3,7 +3,7 @@ User-parallel mini batches dataset implementation
 """
 
 import tensorflow as tf
-from dg_ml_core.file import get_paths_with_prefix
+from dg_ml_core.file import get_paths_with_prefix, file_exists
 from dg_ml_core.collections import dict_ops
 import random
 import argparse
@@ -14,12 +14,33 @@ class UserParallelMiniBatchDataset(object):
     def __init__(
             self,
             batch_size,
-            sessions_by_user_prefix, 
-            min_events_per_session):
+            sessions_by_user_prefix,
+            min_events_per_session,
+            embedding_dict_path=None):
 
         self.batch_size = batch_size
         self.sessions_by_user_prefix = sessions_by_user_prefix
         self.min_events_per_session = min_events_per_session
+        self.embedding_dict_path = embedding_dict_path
+
+        if embedding_dict_path is None or not file_exists(embedding_dict_path):
+            self.embedding_dict = dict()
+            self.embedding_dict['User'] = dict()
+            self.embedding_dict['User']['FromEmbedding'] = dict()
+            self.embedding_dict['User']['ToEmbedding'] = dict()
+            self.embedding_dict['Product'] = dict()
+            self.embedding_dict['Product']['FromEmbedding'] = dict()
+            self.embedding_dict['Product']['ToEmbedding'] = dict()
+            self.next_embedding_id = dict()
+            self.next_embedding_id['User'] = 0
+            self.next_embedding_id['Product'] = 0
+        else:
+            self.embedding_dict = dict_ops.load_dict(embedding_dict_path)
+            self.next_embedding_id = dict()
+            self.next_embedding_id['Product'] = max(
+                self.embedding_dict['Product']['ToEmbedding'].values())
+            self.next_embedding_id['User'] = max(
+                self.embedding_dict['User']['ToEmbedding'].values())
 
     def user_iterator(self):
         paths = get_paths_with_prefix(self.sessions_by_user_prefix)
@@ -43,7 +64,7 @@ class UserParallelMiniBatchDataset(object):
             for event in sorted_events:
                 yield event['ProductId']
 
-            yield '<EOS>'
+            yield -1
 
     def get_next_event_or_none(self, active_user):
         try:
@@ -61,6 +82,23 @@ class UserParallelMiniBatchDataset(object):
         except StopIteration:
             return None
 
+    def get_embedding_id(self, item_id, embedding_type):
+        if item_id < 0:
+            return item_id
+
+        if str(item_id) not in self.embedding_dict[embedding_type]['ToEmbedding']:
+            self.embedding_dict[embedding_type]['ToEmbedding'][str(item_id)]\
+                = self.next_embedding_id[embedding_type]
+
+            embedding_id = self.next_embedding_id[embedding_type]
+
+            self.embedding_dict[embedding_type]['FromEmbedding'][str(embedding_id)]\
+                = item_id
+
+            self.next_embedding_id[embedding_type] += 1
+
+        return self.embedding_dict[embedding_type]['ToEmbedding'][str(item_id)]
+
     def user_parallel_batch_iterator(self):
 
         active_users = dict()
@@ -74,7 +112,7 @@ class UserParallelMiniBatchDataset(object):
             next_batch = dict()
             for idx in active_users:
                 if active_users[idx] is None:
-                    next_batch[idx] = ('<EOU>', '<EOS>')
+                    next_batch[idx] = (-1, -1)
                     continue
                 next_event = self.get_next_event_or_none(active_users[idx])
                 while next_event is None:
@@ -100,41 +138,74 @@ class UserParallelMiniBatchDataset(object):
         while True:
             try:
                 next_features = next(iterator)
-                labels = list(map(lambda x: x[1], next_features))
+                labels = list(map(
+                    lambda x: (
+                        x[1],
+                        self.get_embedding_id(
+                            x[1],
+                            'Product')),
+                    next_features))
+
+                features = list(map(
+                    lambda x: (
+                        x[0],
+                        x[1],
+                        self.get_embedding_id(x[1], 'Product'),
+                        self.get_embedding_id(x[0], 'User')), features))
+
                 yield features, labels
                 features = next_features
             except StopIteration:
+                if self.embedding_dict_path is not None:
+                    dict_ops.save_dict(
+                        self.embedding_dict_path,
+                        self.embedding_dict)
                 return
 
 
 def generate_feature_maps(features, labels):
     features = tf.map_fn(
-        lambda x: {'UserId': x[0], 'ProductId': x[1]},
+        lambda x: {
+            'UserId': x[0],
+            'ProductId': x[1],
+            'EmbeddingId': x[2],
+            'UserEmbeddingId': x[3]},
         features,
-        dtype={'UserId': tf.int64, 'ProductId': tf.int64})
+        dtype={
+            'UserId': tf.int64,
+            'ProductId': tf.int64,
+            'EmbeddingId': tf.int64,
+            'UserEmbeddingId': tf.int64})
 
     labels = tf.map_fn(
-        lambda x: {'ProductId': x},
+        lambda x: {'ProductId': x[0], 'EmbeddingId': x[1]},
         labels,
-        dtype={'ProductId': tf.int64})
+        dtype={'ProductId': tf.int64, 'EmbeddingId': tf.int64})
     return features, labels
 
 
-def input_fn(batch_size, sessions_by_user_prefix, min_events_per_session):
+def input_fn(
+        batch_size,
+        sessions_by_user_prefix,
+        min_events_per_session,
+        embedding_dict_path=None,
+        epochs=1):
 
     dataset_wrapper = UserParallelMiniBatchDataset(
         batch_size,
         sessions_by_user_prefix,
-        min_events_per_session)
+        min_events_per_session,
+        embedding_dict_path=embedding_dict_path)
 
     dataset = tf.data.Dataset.from_generator(
         dataset_wrapper.feature_and_label_generator,
         output_types=(tf.int64, tf.int64),
         output_shapes=(
-            tf.TensorShape((batch_size, 2)),
-            tf.TensorShape((batch_size))))
+            tf.TensorShape((batch_size, 4)),
+            tf.TensorShape((batch_size, 2))))
 
     dataset = dataset.map(generate_feature_maps)
+    dataset.repeat(epochs)
 
     return dataset
 
