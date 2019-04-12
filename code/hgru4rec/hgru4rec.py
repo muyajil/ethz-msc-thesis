@@ -63,20 +63,26 @@ def setup_variables(batch_size, params):
     user_embeddings = tf.get_variable(
         'user_embeddings',
         shape=(params['num_users'], params['user_rnn_units']),
-        partitioner=tf.fixed_size_partitioner(100, axis=0),
+        partitioner=tf.fixed_size_partitioner(
+            params['num_partitions'],
+            axis=0),
         initializer=tf.zeros_initializer()
     )
 
     # Product embeddings, updated by training op
     product_embeddings = tf.get_variable(
         'product_embeddings',
-        partitioner=tf.fixed_size_partitioner(100, axis=0),
+        partitioner=tf.fixed_size_partitioner(
+            params['num_partitions'],
+            axis=0),
         shape=(params['num_products'], params['session_rnn_units']))
 
     # Softmax weights to map product embeddings to product space
     softmax_weights = tf.get_variable(
         'softmax_weights',
-        partitioner=tf.fixed_size_partitioner(100, axis=0),
+        partitioner=tf.fixed_size_partitioner(
+            params['num_partitions'],
+            axis=0),
         shape=(params['num_products'], params['session_rnn_units']))
 
     # Biases for above

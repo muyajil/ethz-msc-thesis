@@ -21,3 +21,4 @@ docker run \
         --log_dir='/logs/baseline_run' \
         --embedding_dict_path='gs://ma-muy/embedding_dict.json' \
         --epochs=10
+        --num_partitions=1000
