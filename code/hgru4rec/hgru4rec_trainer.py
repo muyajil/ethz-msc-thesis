@@ -27,7 +27,7 @@ def main():
     # Model run parameters
     parser.add_argument('--train_steps', type=int)
     parser.add_argument('--epochs', type=int, default=1)
-    parser.add_argument('--num_paritions', type=int)
+    parser.add_argument('--num_partitions', type=int)
 
     args = parser.parse_args()
 

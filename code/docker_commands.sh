@@ -6,6 +6,7 @@ docker run --restart always -d -v ~/ethz-msc-thesis:/ethz-msc-thesis -p 8888:888
 
 # Run model
 docker run \
+    --rm \
     --runtime=nvidia \
     --cpus=$(nproc) \
     -v ~/logs:/logs \
@@ -20,5 +21,5 @@ docker run \
         --num_users=1211522 \
         --log_dir='/logs/baseline_run' \
         --embedding_dict_path='gs://ma-muy/embedding_dict.json' \
-        --epochs=10
+        --epochs=10 \
         --num_partitions=1000
