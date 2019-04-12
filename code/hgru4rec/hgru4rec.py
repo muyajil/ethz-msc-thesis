@@ -296,13 +296,13 @@ def model_fn(features, labels, mode, params):
     # Compute Hitrate
     hitrate_at_5 = hitrate_at_k(
         relevant_labels,
-        logits,
+        softmax_predictions,
         5)
 
     # Compute Hitrate
     hitrate_at_10 = hitrate_at_k(
         relevant_labels,
-        logits,
+        softmax_predictions,
         10)
 
     tf.summary.histogram('05_predictions', softmax_predictions)
@@ -340,7 +340,7 @@ def model_fn(features, labels, mode, params):
 
     if mode == tf.estimator.ModeKeys.PREDICT:
         predictions = tf.nn.top_k(
-            tf.nn.softmax(logits),
+            softmax_predictions,
             params['num_predictions'])
 
         return tf.estimator.EstimatorSpec(mode, predictions=predictions)
