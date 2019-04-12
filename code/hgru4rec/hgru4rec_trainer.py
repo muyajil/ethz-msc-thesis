@@ -2,6 +2,7 @@ from hgru4rec import model_fn
 from user_par_mini_batch import input_fn
 import tensorflow as tf
 import argparse
+import os
 
 
 def main():
@@ -28,6 +29,9 @@ def main():
     parser.add_argument('--epochs', type=int, default=1)
 
     args = parser.parse_args()
+
+    if not os.path.exists(args.log_dir):
+        os.makedirs(args.log_dir)
 
     model_instance = tf.estimator.Estimator(
         model_fn=model_fn,
