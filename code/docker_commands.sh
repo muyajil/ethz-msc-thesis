@@ -6,11 +6,11 @@ docker run --restart always -d -v ~/ethz-msc-thesis:/ethz-msc-thesis -p 8888:888
 
 # Run model
 docker run \
-    --rm \
+    -d \
     --runtime=nvidia \
     --cpus=$(nproc) \
     -v ~/logs:/logs \
-    eu.gcr.io/machinelearning-prod/ma_muy_image:latest \
+    eu.gcr.io/machinelearning-prod/ma_muy_models:latest \
     python /code/hgru4rec/hgru4rec_trainer.py \
         --sessions_by_user_prefix='gs://ma-muy/baseline_dataset/sessions_by_user/' \
         --batch_size=10 \
@@ -22,4 +22,7 @@ docker run \
         --log_dir='/logs/baseline_run' \
         --embedding_dict_path='gs://ma-muy/embedding_dict.json' \
         --epochs=10 \
-        --num_partitions=1000
+        --embedding_size=25
+
+# Attach to logs
+docker logs -f <container_name>

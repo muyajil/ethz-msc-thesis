@@ -86,7 +86,9 @@ class UserParallelMiniBatchDataset(object):
         if item_id < 0:
             return item_id
 
-        if str(item_id) not in self.embedding_dict[embedding_type]['ToEmbedding']:
+        if (str(item_id) not in
+                self.embedding_dict[embedding_type]['ToEmbedding']):
+
             self.embedding_dict[embedding_type]['ToEmbedding'][str(item_id)]\
                 = self.next_embedding_id[embedding_type]
 
