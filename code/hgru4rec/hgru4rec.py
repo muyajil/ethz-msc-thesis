@@ -102,7 +102,7 @@ def model_fn(features, labels, mode, params):
         params['user_rnn_units'],
         return_state=True,
         implementation=2,
-        dropout=0.0,
+        dropout=params['user_dropout'],
         name='user_rnn')
 
     session_rnn = GRU(
@@ -110,7 +110,7 @@ def model_fn(features, labels, mode, params):
         params['session_rnn_units'],
         return_state=True,
         implementation=2,
-        dropout=0.1,
+        dropout=params['session_dropout'],
         name='session_rnn')
 
     # Layer to predict new session initialization
@@ -121,7 +121,7 @@ def model_fn(features, labels, mode, params):
         name='user2session_layer')
 
     # Dropout layer for session initialization
-    user2session_dropout = Dropout(0.0)
+    user2session_dropout = Dropout(params['init_dropout'])
 
     # Reset Session Hidden States to 0 for new users
     session_hidden_states = tf.where(

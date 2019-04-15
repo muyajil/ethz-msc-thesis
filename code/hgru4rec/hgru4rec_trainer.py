@@ -22,6 +22,9 @@ def main():
     parser.add_argument('--num_users', type=int)
     parser.add_argument('--user_rnn_layers', type=int)
     parser.add_argument('--session_rnn_layers', type=int)
+    parser.add_argument('--user_dropout', type=float)
+    parser.add_argument('--session_dropout', type=float)
+    parser.add_argument('--init_dropout', type=float)
 
     # Model run parameters
     parser.add_argument('--train_steps', type=int)

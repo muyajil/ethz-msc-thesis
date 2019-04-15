@@ -21,6 +21,9 @@ docker run \
         --log_dir='/logs/hrnn_init_small' \
         --embedding_dict_path='gs://ma-muy/embedding_dict.json' \
         --epochs=10
+        --user_dropout=0.0
+        --session_dropout=0.1
+        --init_dropout=0.0
 
 # Attach to logs
 docker logs -f <container_name>
