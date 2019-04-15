@@ -13,16 +13,14 @@ docker run \
     eu.gcr.io/machinelearning-prod/ma_muy_models:latest \
     python /code/hgru4rec/hgru4rec_trainer.py \
         --sessions_by_user_prefix='gs://ma-muy/baseline_dataset/sessions_by_user/' \
-        --batch_size=10 \
-        --min_events_per_session=3 \
+        --batch_size=50 \
         --session_rnn_units=100 \
         --user_rnn_units=100 \
-        --num_products=1258092 \
-        --num_users=1211522 \
-        --log_dir='/logs/baseline_run' \
+        --num_products=579847 \
+        --num_users=307526 \
+        --log_dir='/logs/hrnn_init_small' \
         --embedding_dict_path='gs://ma-muy/embedding_dict.json' \
-        --epochs=10 \
-        --embedding_size=25
+        --epochs=10
 
 # Attach to logs
 docker logs -f <container_name>

@@ -15,12 +15,10 @@ class UserParallelMiniBatchDataset(object):
             self,
             batch_size,
             sessions_by_user_prefix,
-            min_events_per_session,
             embedding_dict_path=None):
 
         self.batch_size = batch_size
         self.sessions_by_user_prefix = sessions_by_user_prefix
-        self.min_events_per_session = min_events_per_session
         self.embedding_dict_path = embedding_dict_path
 
         if embedding_dict_path is None or not file_exists(embedding_dict_path):
@@ -56,8 +54,6 @@ class UserParallelMiniBatchDataset(object):
             map(lambda x: user_sessions[x], user_sessions.keys()),
             key=lambda y: y['StartTime'])
         for sorted_session in sorted_sessions:
-            if len(sorted_session['Events']) < self.min_events_per_session:
-                continue
 
             sorted_events = sorted(
                 sorted_session['Events'], key=lambda z: z['Timestamp'])
@@ -189,14 +185,12 @@ def generate_feature_maps(features, labels):
 def input_fn(
         batch_size,
         sessions_by_user_prefix,
-        min_events_per_session,
         embedding_dict_path=None,
         epochs=1):
 
     dataset_wrapper = UserParallelMiniBatchDataset(
         batch_size,
         sessions_by_user_prefix,
-        min_events_per_session,
         embedding_dict_path=embedding_dict_path)
 
     dataset = tf.data.Dataset.from_generator(
@@ -222,14 +216,11 @@ def main():
         type=str,
         default='gs://ma-muy/baseline_dataset/sessions_by_user/')
 
-    parser.add_argument('--min_events_per_session', type=int, default=3)
-
     args = parser.parse_args()
 
     dataset = input_fn(
         args.batch_size,
-        args.sessions_by_user_prefix,
-        args.min_events_per_session)
+        args.sessions_by_user_prefix)
 
     for datapoint in dataset:
         print(datapoint[0])

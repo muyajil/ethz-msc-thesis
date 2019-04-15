@@ -14,7 +14,6 @@ def main():
     parser.add_argument('--embedding_dict_path', type=str)
     parser.add_argument('--sessions_by_user_prefix', type=str)
     parser.add_argument('--batch_size', type=int)
-    parser.add_argument('--min_events_per_session', type=int)
 
     # Model parameters
     parser.add_argument('--session_rnn_units', type=int)
@@ -23,12 +22,10 @@ def main():
     parser.add_argument('--num_users', type=int)
     parser.add_argument('--user_rnn_layers', type=int)
     parser.add_argument('--session_rnn_layers', type=int)
-    parser.add_argument('--embedding_size', type=int)
 
     # Model run parameters
     parser.add_argument('--train_steps', type=int)
     parser.add_argument('--epochs', type=int, default=1)
-    parser.add_argument('--num_partitions', type=int)
 
     args = parser.parse_args()
 
@@ -45,7 +42,6 @@ def main():
         input_fn=lambda: input_fn(
             args.batch_size,
             args.sessions_by_user_prefix,
-            args.min_events_per_session,
             embedding_dict_path=args.embedding_dict_path,
             epochs=args.epochs
         ),
