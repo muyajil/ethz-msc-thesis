@@ -17,4 +17,5 @@ python hgru4rec_trainer.py \
 	--train_steps=10000 \
 	--log_dir='/home/muy/repositories/ethz-msc-thesis/artifacts/hgru4rec_test/logs/' \
 	--embedding_dict_path='/home/muy/repositories/ethz-msc-thesis/artifacts/hgru4rec_test/embedding_dict.json' \
-	--epochs=10
+	--epochs=10 \
+	--embedding_size=25

@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras.layers import GRU, Dense
+from tensorflow.keras.layers import GRU, Dense, Dropout
 from tensorflow.contrib.cudnn_rnn import CudnnGRU
 
 
@@ -60,29 +60,20 @@ def setup_variables(batch_size, params):
         initializer=tf.zeros_initializer())
 
     # User embeddings, updated by user_rnn
-    user_embeddings = tf.get_variable(
-        'user_embeddings',
-        shape=(params['num_users'], params['user_rnn_units']),
-        partitioner=tf.fixed_size_partitioner(
-            params['num_partitions'],
-            axis=0),
+    user_hidden_states = tf.get_variable(
+        'user_hidden_states',
+        shape=(batch_size, params['user_rnn_units']),
         initializer=tf.zeros_initializer()
     )
 
     # Product embeddings, updated by training op
     product_embeddings = tf.get_variable(
         'product_embeddings',
-        partitioner=tf.fixed_size_partitioner(
-            params['num_partitions'],
-            axis=0),
-        shape=(params['num_products'], params['session_rnn_units']))
+        shape=(params['num_products'], params['embedding_size']))
 
     # Softmax weights to map product embeddings to product space
     softmax_weights = tf.get_variable(
         'softmax_weights',
-        partitioner=tf.fixed_size_partitioner(
-            params['num_partitions'],
-            axis=0),
         shape=(params['num_products'], params['session_rnn_units']))
 
     # Biases for above
@@ -94,7 +85,7 @@ def setup_variables(batch_size, params):
             ending_sessions_mask,
             ended_users_mask,
             session_hidden_states,
-            user_embeddings,
+            user_hidden_states,
             product_embeddings,
             softmax_weights,
             softmax_biases)
@@ -108,7 +99,7 @@ def model_fn(features, labels, mode, params):
         ending_sessions_mask,
         ended_users_mask,
         session_hidden_states,
-        user_embeddings,
+        user_hidden_states,
         product_embeddings,
         softmax_weights,
         softmax_biases) = setup_variables(batch_size, params)
@@ -118,6 +109,7 @@ def model_fn(features, labels, mode, params):
         params['user_rnn_units'],
         return_state=True,
         implementation=2,
+        dropout=0.1,
         name='user_rnn')
 
     session_rnn = GRU(
@@ -125,6 +117,7 @@ def model_fn(features, labels, mode, params):
         params['session_rnn_units'],
         return_state=True,
         implementation=2,
+        dropout=0.2,
         name='session_rnn')
 
     # Layer to predict new session initialization
@@ -134,26 +127,23 @@ def model_fn(features, labels, mode, params):
         activation='tanh',
         name='user2session_layer')
 
+    # Dropout layer for session initialization
+    user2session_dropout = Dropout(0.2)
+
     # Reset Session Hidden States to 0 for new users
     session_hidden_states = tf.where(
         ended_users_mask,
         tf.zeros(tf.shape(session_hidden_states)),
         session_hidden_states,
-        name='reset_hidden_states_new_users')
+        name='reset_session_hidden_states')
 
-    # Get embeddings of users in current batch, 0-vector for ended users
-    user_hidden_states = tf.map_fn(
-        lambda x: tf.cond(
-            x[1],
-            lambda: tf.nn.embedding_lookup(product_embeddings, x[0]),
-            lambda: tf.zeros(params['user_rnn_units'])
-        ),
-        [
-            features['UserEmbeddingId'],
-            ended_users_mask
-        ],
-        dtype=tf.float32,
-        name='get_user_embeddings')
+    # Reset User Hidden States to 0 for new users
+    user_hidden_states = tf.where(
+        ended_users_mask,
+        tf.zeros(tf.shape(user_hidden_states)),
+        user_hidden_states,
+        name='reset_user_hidden_states'
+    )
 
     # Compute new user representation for all users in current batch
     new_session_hidden_states_seed, new_user_hidden_states = user_rnn.apply(
@@ -164,6 +154,10 @@ def model_fn(features, labels, mode, params):
     new_session_hidden_states = user2session_layer.apply(
         new_session_hidden_states_seed)
 
+    new_session_hidden_states = user2session_dropout.apply(
+        new_session_hidden_states
+    )
+
     # Select new session initialization for new sessions
     session_hidden_states = tf.where(
         ended_sessions_mask,
@@ -172,19 +166,12 @@ def model_fn(features, labels, mode, params):
         name='initialize_new_sessions')
 
     # Update user embeddings where the session ended
-    user_embeddings = tf.map_fn(
-        lambda x: tf.cond(
-            x[2],
-            lambda: x[1],
-            lambda: tf.nn.embedding_lookup(user_embeddings, x[0])
-        ),
-        [
-            features['UserEmbeddingId'],
-            new_user_hidden_states,
-            ended_sessions_mask
-        ],
-        dtype=tf.float32,
-        name='update_user_embeddings')
+    user_hidden_states = tf.where(
+        ended_sessions_mask,
+        new_user_hidden_states,
+        user_hidden_states,
+        name='update_user_representation'
+    )
 
     # Compute new mask for ended sessions
     ended_sessions_mask = tf.cast(
@@ -224,7 +211,7 @@ def model_fn(features, labels, mode, params):
         lambda x: tf.cond(
             x[1],
             lambda: tf.nn.embedding_lookup(product_embeddings, x[0]),
-            lambda: tf.zeros(params['session_rnn_units'])
+            lambda: tf.zeros(params['embedding_size'])
         ),
         [
             features['EmbeddingId'],
