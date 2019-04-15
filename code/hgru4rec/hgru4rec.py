@@ -59,19 +59,14 @@ def setup_variables(batch_size, params):
         shape=(batch_size, params['session_rnn_units']),
         initializer=tf.zeros_initializer())
 
-    # User embeddings, updated by user_rnn
+    # User hidden_states, updated by user_rnn
     user_hidden_states = tf.get_variable(
         'user_hidden_states',
         shape=(batch_size, params['user_rnn_units']),
         initializer=tf.zeros_initializer()
     )
 
-    # Product embeddings, updated by training op
-    product_embeddings = tf.get_variable(
-        'product_embeddings',
-        shape=(params['num_products'], params['embedding_size']))
-
-    # Softmax weights to map product embeddings to product space
+    # Softmax weights to map RNN output to product space
     softmax_weights = tf.get_variable(
         'softmax_weights',
         shape=(params['num_products'], params['session_rnn_units']))
@@ -86,7 +81,6 @@ def setup_variables(batch_size, params):
             ended_users_mask,
             session_hidden_states,
             user_hidden_states,
-            product_embeddings,
             softmax_weights,
             softmax_biases)
 
@@ -100,7 +94,6 @@ def model_fn(features, labels, mode, params):
         ended_users_mask,
         session_hidden_states,
         user_hidden_states,
-        product_embeddings,
         softmax_weights,
         softmax_biases) = setup_variables(batch_size, params)
 
@@ -165,7 +158,7 @@ def model_fn(features, labels, mode, params):
         session_hidden_states,
         name='initialize_new_sessions')
 
-    # Update user embeddings where the session ended
+    # Update user hidden states where the session ended
     user_hidden_states = tf.where(
         ended_sessions_mask,
         new_user_hidden_states,
@@ -206,36 +199,36 @@ def model_fn(features, labels, mode, params):
             ended_sessions_mask,
             ending_sessions_mask))
 
-    # Get product embeddings for relevant products
-    relevant_product_embeddings = tf.map_fn(
+    # Get one-hot encoding of products
+    relevant_one_hots = tf.map_fn(
         lambda x: tf.cond(
             x[1],
-            lambda: tf.nn.embedding_lookup(product_embeddings, x[0]),
-            lambda: tf.zeros(params['embedding_size'])
+            lambda: tf.one_hot(x[0], params['num_products']),
+            lambda: tf.zeros(params['num_products'])
         ),
         [
             features['EmbeddingId'],
             relevant_sessions_mask
         ],
         dtype=tf.float32,
-        name='get_relevant_product_embeddings')
+        name='get_relevant_one_hots')
 
     # Get session hidden states for relevant sessions
     relevant_hidden_states = tf.where(
         relevant_sessions_mask,
         session_hidden_states,
         tf.zeros(tf.shape(session_hidden_states)),
-        name='get_relevant_session_embeddings'
+        name='get_relevant_session_hidden_states'
     )
 
     # Apply Session RNN -> get new hidden states and predictions
-    predicted_embeddings, new_session_hidden_states = session_rnn.apply(
-        tf.expand_dims(relevant_product_embeddings, 1),
+    predictions, new_session_hidden_states = session_rnn.apply(
+        tf.expand_dims(relevant_one_hots, 1),
         initial_state=relevant_hidden_states)
 
     # Filter out irrelevant predictions
-    predicted_embeddings = tf.boolean_mask(
-        predicted_embeddings,
+    predictions = tf.boolean_mask(
+        predictions,
         relevant_sessions_mask,
         name='filter_irrelevant_predictions')
 
@@ -244,7 +237,7 @@ def model_fn(features, labels, mode, params):
         relevant_sessions_mask,
         new_session_hidden_states,
         session_hidden_states,
-        name='update_relevant_session_embeddings')
+        name='update_relevant_session_hidden_states')
 
     # Extract relevant labels
     relevant_labels = tf.boolean_mask(
@@ -267,7 +260,7 @@ def model_fn(features, labels, mode, params):
     # Compute logits for computing the loss of the minibatch
     loss_relevant_logits = tf.add(
         tf.matmul(
-            predicted_embeddings,
+            predictions,
             samples_softmax_weights,
             transpose_b=True,
             name='compute_softmax_logits'),
@@ -279,7 +272,7 @@ def model_fn(features, labels, mode, params):
 
     # Compute logits for product predictions
     logits = tf.matmul(
-        predicted_embeddings,
+        predictions,
         softmax_weights,
         transpose_b=True) + softmax_biases
 
