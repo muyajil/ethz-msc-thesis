@@ -10,7 +10,7 @@ docker run \
     --runtime=nvidia \
     --cpus=$(nproc) \
     -v ~/logs:/logs \
-    eu.gcr.io/machinelearning-prod/ma_muy_models:latest \
+    eu.gcr.io/machinelearning-prod/ma_muy_models:user_embeddings \
     python /code/hgru4rec/hgru4rec_trainer.py \
         --train_prefix='gs://ma-muy/baseline_dataset/train/' \
         --eval_prefix='gs://ma-muy/baseline_dataset/eval/' \

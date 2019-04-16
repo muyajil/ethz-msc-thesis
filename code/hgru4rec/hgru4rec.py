@@ -130,12 +130,19 @@ def model_fn(features, labels, mode, params):
         session_hidden_states,
         name='reset_session_hidden_states')
 
-    # Reset User Hidden States to 0 for new users
-    user_hidden_states = tf.nn.embedding_lookup(
-        user_embeddings,
-        features['UserEmbeddingId'],
-        name='get_user_hidden_states'
-    )
+    # Get user_hidden_states
+    user_hidden_states = tf.map_fn(
+        lambda x: tf.cond(
+            x[1],
+            lambda: tf.nn.embedding_lookup(user_embeddings, x[0]),
+            lambda: tf.zeros(params['user_rnn_units'])
+        ),
+        [
+            features['UserEmbeddingId'],
+            ended_users_mask
+        ],
+        dtype=tf.float32,
+        name='get_user_hidden_states')
 
     # Compute new user representation for all users in current batch
     new_session_hidden_states_seed, new_user_hidden_states = user_rnn.apply(
@@ -160,7 +167,7 @@ def model_fn(features, labels, mode, params):
     # Update user hidden states where the session ended
     tf.scatter_update(
         user_embeddings,
-        features['UserEmbeddingId'],
+        tf.boolean_mask(features['UserEmbeddingId'], ended_users_mask),
         new_user_hidden_states,
         name='update_user_embeddings'
     )
