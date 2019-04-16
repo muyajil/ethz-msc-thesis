@@ -291,21 +291,21 @@ def model_fn(features, labels, mode, params):
         softmax_predictions,
         10)
 
-    tf.summary.histogram('05_predictions', softmax_predictions)
+    tf.summary.histogram('observe/predictions', softmax_predictions)
     tf.summary.scalar(
-        '04_num_relevant_sessions',
+        'observe//relevant_session',
         tf.reduce_sum(tf.cast(relevant_sessions_mask, tf.int32)))
-    tf.summary.scalar('02_hitrate_at_5', hitrate_at_5)
-    tf.summary.scalar('03_hitrate_at_10', hitrate_at_10)
-    tf.summary.scalar('01_top1_loss', loss)
+    tf.summary.scalar('metrics/hitrate_at_5', hitrate_at_5)
+    tf.summary.scalar('metrics/hitrate_at_10', hitrate_at_10)
+    tf.summary.scalar('metrics/top_1_loss', loss)
 
     if mode == tf.estimator.ModeKeys.TRAIN:
 
-        optimizer = tf.train.AdagradOptimizer(learning_rate=0.1)
+        optimizer = tf.train.AdagradOptimizer(learning_rate=0.3)
 
         grads_and_vars = optimizer.compute_gradients(loss)
 
-        tf.summary.histogram('06_gradients_histo', grads_and_vars[0])
+        tf.summary.histogram('observe/gradients', grads_and_vars[0])
 
         train_op = optimizer.apply_gradients(
             grads_and_vars,
@@ -315,8 +315,9 @@ def model_fn(features, labels, mode, params):
 
     if mode == tf.estimator.ModeKeys.EVAL:
         eval_metric_ops = {
-            'hitrate_at_5': hitrate_at_5,
-            'hitrate_at_10': hitrate_at_10
+            'eval_metrics/hitrate_at_5': hitrate_at_5,
+            'eval_metrics/hitrate_at_10': hitrate_at_10,
+            'eval_metrics/top_1_loss': loss
         }
 
         return tf.estimaor.EstimatorSpec(
