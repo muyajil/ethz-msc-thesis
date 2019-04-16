@@ -59,10 +59,10 @@ def setup_variables(batch_size, params):
         shape=(batch_size, params['session_rnn_units']),
         initializer=tf.zeros_initializer())
 
-    # User hidden_states, updated by user_rnn
-    user_hidden_states = tf.get_variable(
-        'user_hidden_states',
-        shape=(batch_size, params['user_rnn_units']),
+    # User Embedding, updated by user_rnn
+    user_embeddings = tf.get_variable(
+        'user_embeddings',
+        shape=(params['num_users'], params['user_rnn_units']),
         initializer=tf.zeros_initializer()
     )
 
@@ -80,7 +80,7 @@ def setup_variables(batch_size, params):
             ending_sessions_mask,
             ended_users_mask,
             session_hidden_states,
-            user_hidden_states,
+            user_embeddings,
             softmax_weights,
             softmax_biases)
 
@@ -93,7 +93,7 @@ def model_fn(features, labels, mode, params):
         ending_sessions_mask,
         ended_users_mask,
         session_hidden_states,
-        user_hidden_states,
+        user_embeddings,
         softmax_weights,
         softmax_biases) = setup_variables(batch_size, params)
 
@@ -131,11 +131,10 @@ def model_fn(features, labels, mode, params):
         name='reset_session_hidden_states')
 
     # Reset User Hidden States to 0 for new users
-    user_hidden_states = tf.where(
-        ended_users_mask,
-        tf.zeros(tf.shape(user_hidden_states)),
-        user_hidden_states,
-        name='reset_user_hidden_states'
+    user_hidden_states = tf.nn.embedding_lookup(
+        user_embeddings,
+        features['UserEmbeddingId'],
+        name='get_user_hidden_states'
     )
 
     # Compute new user representation for all users in current batch
@@ -159,11 +158,11 @@ def model_fn(features, labels, mode, params):
         name='initialize_new_sessions')
 
     # Update user hidden states where the session ended
-    user_hidden_states = tf.where(
-        ended_sessions_mask,
+    tf.scatter_update(
+        user_embeddings,
+        features['UserEmbeddingId'],
         new_user_hidden_states,
-        user_hidden_states,
-        name='update_user_representation'
+        name='update_user_embeddings'
     )
 
     # Compute new mask for ended sessions

@@ -19,6 +19,7 @@ def main():
     parser.add_argument('--session_rnn_units', type=int)
     parser.add_argument('--user_rnn_units', type=int)
     parser.add_argument('--num_products', type=int)
+    parser.add_argument('--num_users', type=int)
     parser.add_argument('--user_rnn_layers', type=int)
     parser.add_argument('--session_rnn_layers', type=int)
     parser.add_argument('--user_dropout', type=float)
@@ -40,34 +41,34 @@ def main():
         params=vars(args)
     )
 
-    model_instance.train(
-        input_fn=lambda: input_fn(
-            args.batch_size,
-            args.train_prefix,
-            epochs=args.epochs
-        ),
-        steps=args.train_steps
-    )
-
-    # train_spec = tf.estimator.TrainSpec(
+    # model_instance.train(
     #     input_fn=lambda: input_fn(
     #         args.batch_size,
     #         args.train_prefix,
     #         epochs=args.epochs
-    #     ))
-
-    # eval_spec = tf.estimator.EvalSpec(
-    #     input_fn=lambda: input_fn(
-    #         args.batch_size,
-    #         args.eval_prefix,
-    #     )
+    #     ),
+    #     steps=args.train_steps
     # )
 
-    # tf.estimator.train_and_evaluate(
-    #     estimator=model_instance,
-    #     train_spec=train_spec,
-    #     eval_spec=eval_spec
-    # )
+    train_spec = tf.estimator.TrainSpec(
+        input_fn=lambda: input_fn(
+            args.batch_size,
+            args.train_prefix,
+            epochs=args.epochs
+        ))
+
+    eval_spec = tf.estimator.EvalSpec(
+        input_fn=lambda: input_fn(
+            args.batch_size,
+            args.eval_prefix,
+        )
+    )
+
+    tf.estimator.train_and_evaluate(
+        estimator=model_instance,
+        train_spec=train_spec,
+        eval_spec=eval_spec
+    )
 
 if __name__ == "__main__":
     tf.logging.set_verbosity(tf.logging.INFO)
