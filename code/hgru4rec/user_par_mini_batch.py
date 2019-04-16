@@ -39,7 +39,7 @@ class UserParallelMiniBatchDataset(object):
             for event in sorted_events:
                 yield event
 
-            yield -1
+            yield {'ProductId': -1, 'EmbeddingId': -1}
 
     def get_next_event_or_none(self, active_user):
         try:
@@ -70,7 +70,8 @@ class UserParallelMiniBatchDataset(object):
             next_batch = dict()
             for idx in active_users:
                 if active_users[idx] is None:
-                    next_batch[idx] = (-1, -1)
+                    next_batch[idx] = \
+                        (-1, {'ProductId': -1, 'EmbeddingId': -1})
                     continue
                 next_event = self.get_next_event_or_none(active_users[idx])
                 while next_event is None:

@@ -18,7 +18,6 @@ docker run \
         --session_rnn_units=100 \
         --user_rnn_units=100 \
         --num_products=579847 \
-        --num_users=307526 \
         --log_dir='/logs/hrnn_init_small' \
         --epochs=10 \
         --user_dropout=0.0 \
