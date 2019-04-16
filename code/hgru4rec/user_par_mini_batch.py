@@ -107,7 +107,8 @@ class UserParallelMiniBatchDataset(object):
                     lambda x: (
                         x[0],
                         x[1]['ProductId'],
-                        x[1]['EmbeddingId']), features))
+                        x[1]['EmbeddingId'],
+                        x[1]['UserEmbeddingId']), features))
 
                 yield features, labels
                 features = next_features
@@ -120,12 +121,14 @@ def generate_feature_maps(features, labels):
         lambda x: {
             'UserId': x[0],
             'ProductId': x[1],
-            'EmbeddingId': x[2]},
+            'EmbeddingId': x[2],
+            'UserEmbeddingId': x[3]},
         features,
         dtype={
             'UserId': tf.int64,
             'ProductId': tf.int64,
-            'EmbeddingId': tf.int64})
+            'EmbeddingId': tf.int64,
+            'UserEmbeddingId': tf.int64})
 
     labels = tf.map_fn(
         lambda x: {'ProductId': x[0], 'EmbeddingId': x[1]},
@@ -147,7 +150,7 @@ def input_fn(
         dataset_wrapper.feature_and_label_generator,
         output_types=(tf.int64, tf.int64),
         output_shapes=(
-            tf.TensorShape((batch_size, 3)),
+            tf.TensorShape((batch_size, 4)),
             tf.TensorShape((batch_size, 2))))
 
     dataset = dataset.map(generate_feature_maps)
@@ -164,13 +167,15 @@ def main():
     parser.add_argument(
         '--sessions_by_user_prefix',
         type=str,
-        default='gs://ma-muy/baseline_dataset/train_embedded/')
+        default='gs://ma-muy/baseline_dataset/train/')
 
     args = parser.parse_args()
 
     dataset = input_fn(
         args.batch_size,
         args.sessions_by_user_prefix)
+
+    print('Datapoint:')
 
     for datapoint in dataset:
         print(datapoint[0])
