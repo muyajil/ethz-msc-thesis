@@ -14,31 +14,10 @@ class UserParallelMiniBatchDataset(object):
     def __init__(
             self,
             batch_size,
-            sessions_by_user_prefix,
-            embedding_dict_path=None):
+            sessions_by_user_prefix):
 
         self.batch_size = batch_size
         self.sessions_by_user_prefix = sessions_by_user_prefix
-        self.embedding_dict_path = embedding_dict_path
-
-        if embedding_dict_path is None or not file_exists(embedding_dict_path):
-            self.embedding_dict = dict()
-            self.embedding_dict['User'] = dict()
-            self.embedding_dict['User']['FromEmbedding'] = dict()
-            self.embedding_dict['User']['ToEmbedding'] = dict()
-            self.embedding_dict['Product'] = dict()
-            self.embedding_dict['Product']['FromEmbedding'] = dict()
-            self.embedding_dict['Product']['ToEmbedding'] = dict()
-            self.next_embedding_id = dict()
-            self.next_embedding_id['User'] = 0
-            self.next_embedding_id['Product'] = 0
-        else:
-            self.embedding_dict = dict_ops.load_dict(embedding_dict_path)
-            self.next_embedding_id = dict()
-            self.next_embedding_id['Product'] = max(
-                self.embedding_dict['Product']['ToEmbedding'].values())
-            self.next_embedding_id['User'] = max(
-                self.embedding_dict['User']['ToEmbedding'].values())
 
     def user_iterator(self):
         paths = get_paths_with_prefix(self.sessions_by_user_prefix)
@@ -58,7 +37,7 @@ class UserParallelMiniBatchDataset(object):
             sorted_events = sorted(
                 sorted_session['Events'], key=lambda z: z['Timestamp'])
             for event in sorted_events:
-                yield event['ProductId']
+                yield event
 
             yield -1
 
@@ -77,25 +56,6 @@ class UserParallelMiniBatchDataset(object):
             }
         except StopIteration:
             return None
-
-    def get_embedding_id(self, item_id, embedding_type):
-        if item_id < 0:
-            return item_id
-
-        if (str(item_id) not in
-                self.embedding_dict[embedding_type]['ToEmbedding']):
-
-            self.embedding_dict[embedding_type]['ToEmbedding'][str(item_id)]\
-                = self.next_embedding_id[embedding_type]
-
-            embedding_id = self.next_embedding_id[embedding_type]
-
-            self.embedding_dict[embedding_type]['FromEmbedding'][str(embedding_id)]\
-                = item_id
-
-            self.next_embedding_id[embedding_type] += 1
-
-        return self.embedding_dict[embedding_type]['ToEmbedding'][str(item_id)]
 
     def user_parallel_batch_iterator(self):
 
@@ -116,7 +76,7 @@ class UserParallelMiniBatchDataset(object):
                 while next_event is None:
                     next_user = self.get_next_user_or_none(users)
                     if next_user is None:
-                        print('There are no more new users')
+                        tf.logging.info('There are no more new users')
                         active_users[idx] = None
                         break
                     else:
@@ -126,7 +86,7 @@ class UserParallelMiniBatchDataset(object):
                 else:
                     next_batch[idx] = \
                         (active_users[idx]['UserId'], next_event)
-            if len(set(next_batch.values())) == 1:
+            if len(set(map(lambda x: str(x), next_batch.values()))) == 1:
                 return
             yield list(next_batch.values())
 
@@ -138,26 +98,19 @@ class UserParallelMiniBatchDataset(object):
                 next_features = next(iterator)
                 labels = list(map(
                     lambda x: (
-                        x[1],
-                        self.get_embedding_id(
-                            x[1],
-                            'Product')),
+                        x[1]['ProductId'],
+                        x[1]['EmbeddingId']),
                     next_features))
 
                 features = list(map(
                     lambda x: (
                         x[0],
-                        x[1],
-                        self.get_embedding_id(x[1], 'Product'),
-                        self.get_embedding_id(x[0], 'User')), features))
+                        x[1]['ProductId'],
+                        x[1]['EmbeddingId']), features))
 
                 yield features, labels
                 features = next_features
             except StopIteration:
-                if self.embedding_dict_path is not None:
-                    dict_ops.save_dict(
-                        self.embedding_dict_path,
-                        self.embedding_dict)
                 return
 
 
@@ -166,14 +119,12 @@ def generate_feature_maps(features, labels):
         lambda x: {
             'UserId': x[0],
             'ProductId': x[1],
-            'EmbeddingId': x[2],
-            'UserEmbeddingId': x[3]},
+            'EmbeddingId': x[2]},
         features,
         dtype={
             'UserId': tf.int64,
             'ProductId': tf.int64,
-            'EmbeddingId': tf.int64,
-            'UserEmbeddingId': tf.int64})
+            'EmbeddingId': tf.int64})
 
     labels = tf.map_fn(
         lambda x: {'ProductId': x[0], 'EmbeddingId': x[1]},
@@ -185,19 +136,17 @@ def generate_feature_maps(features, labels):
 def input_fn(
         batch_size,
         sessions_by_user_prefix,
-        embedding_dict_path=None,
         epochs=1):
 
     dataset_wrapper = UserParallelMiniBatchDataset(
         batch_size,
-        sessions_by_user_prefix,
-        embedding_dict_path=embedding_dict_path)
+        sessions_by_user_prefix)
 
     dataset = tf.data.Dataset.from_generator(
         dataset_wrapper.feature_and_label_generator,
         output_types=(tf.int64, tf.int64),
         output_shapes=(
-            tf.TensorShape((batch_size, 4)),
+            tf.TensorShape((batch_size, 3)),
             tf.TensorShape((batch_size, 2))))
 
     dataset = dataset.map(generate_feature_maps)
@@ -214,7 +163,7 @@ def main():
     parser.add_argument(
         '--sessions_by_user_prefix',
         type=str,
-        default='gs://ma-muy/baseline_dataset/sessions_by_user/')
+        default='gs://ma-muy/baseline_dataset/train_embedded/')
 
     args = parser.parse_args()
 
