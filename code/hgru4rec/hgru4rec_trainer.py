@@ -40,25 +40,34 @@ def main():
         params=vars(args)
     )
 
-    train_spec = tf.estimator.TrainSpec(
+    model_instance.train(
         input_fn=lambda: input_fn(
             args.batch_size,
             args.train_prefix,
             epochs=args.epochs
-        ))
-
-    eval_spec = tf.estimator.EvalSpec(
-        input_fn=lambda: input_fn(
-            args.batch_size,
-            args.eval_prefix,
-        )
+        ),
+        steps=args.train_steps
     )
 
-    tf.estimator.train_and_evaluate(
-        estimator=model_instance,
-        train_spec=train_spec,
-        eval_spec=eval_spec
-    )
+    # train_spec = tf.estimator.TrainSpec(
+    #     input_fn=lambda: input_fn(
+    #         args.batch_size,
+    #         args.train_prefix,
+    #         epochs=args.epochs
+    #     ))
+
+    # eval_spec = tf.estimator.EvalSpec(
+    #     input_fn=lambda: input_fn(
+    #         args.batch_size,
+    #         args.eval_prefix,
+    #     )
+    # )
+
+    # tf.estimator.train_and_evaluate(
+    #     estimator=model_instance,
+    #     train_spec=train_spec,
+    #     eval_spec=eval_spec
+    # )
 
 if __name__ == "__main__":
     tf.logging.set_verbosity(tf.logging.INFO)
