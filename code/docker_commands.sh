@@ -17,7 +17,7 @@ docker run \
         --batch_size=50 \
         --session_rnn_units=100 \
         --user_rnn_units=100 \
-        --num_products=542360 \
+        --num_products=542346 \
         --log_dir='/logs/hrnn_init_small' \
         --epochs=10 \
         --user_dropout=0.0 \
