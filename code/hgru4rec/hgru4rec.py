@@ -134,13 +134,16 @@ def model_fn(features, labels, mode, params):
         user2session_layer,
         user2session_dropout) = setup_model(params)
 
+    # Ended sessions where the user did not change
     ended_sessions_same_user_mask = tf.logical_and(
         ended_sessions_mask,
         tf.logical_not(ended_users_mask)
     )
 
     # Get user_hidden_states to update
-    # -> all the ones that ended a session in the previous batch
+    # The hidden states to update are the ones where a session ended
+    # but the user has stayed the same
+    # The other hidden states are 0
     user_hidden_states = tf.map_fn(
         lambda x: tf.cond(
             x[1],
@@ -178,17 +181,17 @@ def model_fn(features, labels, mode, params):
     tf.scatter_update(
         user_embeddings,
         tf.boolean_mask(
-            features['UserEmbeddingId'], 
+            features['UserEmbeddingId'],
             ended_sessions_same_user_mask),
         tf.boolean_mask(
-            new_user_hidden_states, 
+            new_user_hidden_states,
             ended_sessions_same_user_mask),
         name='update_user_embeddings'
     )
 
     # Reset Session Hidden to 0 when a user has ended in the batch before
     session_hidden_states = tf.where(
-        ended_sessions_mask,
+        ended_users_mask,
         tf.zeros(tf.shape(session_hidden_states)),
         session_hidden_states,
         name='reset_session_hidden_states')
