@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras.layers import GRU, Dense, Dropout
 from tensorflow.contrib.cudnn_rnn import CudnnGRU
-from tensorflow.contrib.framework import is_tensor
+from tensorflow.metrics import precision_at_k, recall_at_k
 
 
 def top1_loss(logits, batch_size):
@@ -285,28 +285,10 @@ def model_fn(features, labels, mode, params):
         softmax_weights,
         transpose_b=True) + softmax_biases
 
-    # Apply softmax activation
-    softmax_predictions = tf.nn.softmax(logits)
-
-    # Compute Hitrate
-    hitrate_at_5 = hitrate_at_k(
-        relevant_labels,
-        softmax_predictions,
-        5)
-
-    # Compute Hitrate
-    hitrate_at_10 = hitrate_at_k(
-        relevant_labels,
-        softmax_predictions,
-        10)
-
-    tf.summary.histogram('observe/predictions', softmax_predictions)
+    tf.summary.histogram('observe/predictions', logits)
     tf.summary.scalar(
         'observe//relevant_session',
         tf.reduce_sum(tf.cast(relevant_sessions_mask, tf.int32)))
-    tf.summary.scalar('metrics/hitrate_at_5', hitrate_at_5)
-    tf.summary.scalar('metrics/hitrate_at_10', hitrate_at_10)
-    tf.summary.scalar('metrics/top_1_loss', loss)
 
     if mode == tf.estimator.ModeKeys.TRAIN:
 
@@ -331,10 +313,24 @@ def model_fn(features, labels, mode, params):
         return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op)
 
     if mode == tf.estimator.ModeKeys.EVAL:
+
+        precision_at_10 = precision_at_k(
+            labels=relevant_labels,
+            logits=logits,
+            k=5,
+            name='compute_precision_at_k'
+        )
+
+        recall_at_10 = recall_at_k(
+            labels=relevant_labels,
+            logits=logits,
+            k=5,
+            name='compute_recall_at_10'
+        )
+
         eval_metric_ops = {
-            'eval_metrics/hitrate_at_5': hitrate_at_5,
-            'eval_metrics/hitrate_at_10': hitrate_at_10,
-            'eval_metrics/top_1_loss': loss
+            'eval_metrics/precision_at_10': precision_at_10,
+            'eval_metrics/recall_at_10': recall_at_10,
         }
 
         return tf.estimator.EstimatorSpec(
