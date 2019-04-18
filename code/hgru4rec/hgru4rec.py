@@ -26,16 +26,14 @@ def setup_variables(batch_size, params):
         shape=(),
         initializer=tf.zeros_initializer(),
         trainable=False,
-        dtype=tf.int32
-    )
+        dtype=tf.int32)
 
     num_ended_users = tf.get_variable(
         'num_ended_users',
         shape=(),
         initializer=tf.zeros_initializer(),
         trainable=False,
-        dtype=tf.int32
-    )
+        dtype=tf.int32)
 
     # Mask describing ended sessions, true if session ended
     ended_sessions_mask = tf.get_variable(
@@ -185,8 +183,7 @@ def model_fn(features, labels, mode, params):
         new_session_hidden_states_seed)
 
     new_session_hidden_states = user2session_dropout.apply(
-        new_session_hidden_states
-    )
+        new_session_hidden_states)
 
     # Select new session initialization for new sessions
     session_hidden_states = tf.where(
@@ -204,18 +201,15 @@ def model_fn(features, labels, mode, params):
         tf.boolean_mask(
             new_user_hidden_states,
             ended_sessions_same_user_mask),
-        name='update_user_embeddings'
-    )
+        name='update_user_embeddings')
 
     num_ended_sessions = tf.add(
         tf.reduce_sum(tf.cast(ended_sessions_mask, tf.int32)),
-        num_ended_sessions
-    )
+        num_ended_sessions)
 
     num_ended_users = tf.add(
         tf.reduce_sum(tf.cast(ended_users_mask, tf.int32)),
-        num_ended_users
-    )
+        num_ended_users)
 
     tf.summary.scalar('observe/num_ended_sessions', num_ended_sessions)
 
@@ -280,8 +274,7 @@ def model_fn(features, labels, mode, params):
         relevant_sessions_mask,
         session_hidden_states,
         tf.zeros(tf.shape(session_hidden_states)),
-        name='get_relevant_session_hidden_states'
-    )
+        name='get_relevant_session_hidden_states')
 
     # Apply Session RNN -> get new hidden states and predictions
     predictions, new_session_hidden_states = session_rnn.apply(
@@ -368,8 +361,7 @@ def model_fn(features, labels, mode, params):
             else:
                 tf.summary.histogram(
                     "variables/{}".format(var.name),
-                    var
-                )
+                    var)
 
         train_op = optimizer.apply_gradients(
             grads_and_vars,
@@ -383,15 +375,13 @@ def model_fn(features, labels, mode, params):
             labels=relevant_labels,
             predictions=logits,
             k=10,
-            name='compute_precision_at_k'
-        )
+            name='compute_precision_at_k')
 
         recall_at_10 = recall_at_k(
             labels=relevant_labels,
             predictions=logits,
             k=10,
-            name='compute_recall_at_10'
-        )
+            name='compute_recall_at_10')
 
         eval_metric_ops = {
             'eval_metrics/precision_at_10': precision_at_10,
