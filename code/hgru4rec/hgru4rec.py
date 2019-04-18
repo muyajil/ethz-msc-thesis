@@ -20,57 +20,75 @@ def top1_loss(logits, batch_size):
 
 
 def setup_variables(batch_size, params):
-    with tf.variable_scope('', reuse=tf.AUTO_REUSE):
-        # Mask describing ended sessions, true if session ended
-        ended_sessions_mask = tf.get_variable(
-            'ended_sessions_mask',
-            shape=(batch_size,),
-            initializer=tf.zeros_initializer(),
-            trainable=False,
-            dtype=tf.bool)
 
-        # Mask describing ending sessions, true if session is ending
-        ending_sessions_mask = tf.get_variable(
-            'ending_sessions_mask',
-            shape=(batch_size,),
-            initializer=tf.zeros_initializer(),
-            trainable=False,
-            dtype=tf.bool)
+    num_ended_sessions = tf.get_variable(
+        'num_ended_sessions',
+        shape=(),
+        initializer=tf.zeros_initializer(),
+        trainable=False,
+        dtype=tf.int32
+    )
 
-        # Mask describing ended users, true if not more user events
-        ended_users_mask = tf.get_variable(
-            'ended_users_mask',
-            shape=(batch_size,),
-            initializer=tf.zeros_initializer(),
-            trainable=False,
-            dtype=tf.bool)
+    num_ended_users = tf.get_variable(
+        'num_ended_users',
+        shape=(),
+        initializer=tf.zeros_initializer(),
+        trainable=False,
+        dtype=tf.int32
+    )
 
-        # Hidden states of session_rnn
-        session_hidden_states = tf.get_variable(
-            'session_hidden_states',
-            shape=(batch_size, params['session_rnn_units']),
-            initializer=tf.zeros_initializer(),
-            trainable=False)
+    # Mask describing ended sessions, true if session ended
+    ended_sessions_mask = tf.get_variable(
+        'ended_sessions_mask',
+        shape=(batch_size,),
+        initializer=tf.zeros_initializer(),
+        trainable=False,
+        dtype=tf.bool)
 
-        # User Embedding, updated by user_rnn
-        user_embeddings = tf.get_variable(
-            'user_embeddings',
-            shape=(params['num_users'], params['user_rnn_units']),
-            initializer=tf.zeros_initializer(),
-            trainable=False
-        )
+    # Mask describing ending sessions, true if session is ending
+    ending_sessions_mask = tf.get_variable(
+        'ending_sessions_mask',
+        shape=(batch_size,),
+        initializer=tf.zeros_initializer(),
+        trainable=False,
+        dtype=tf.bool)
 
-        # Softmax weights to map RNN output to product space
-        softmax_weights = tf.get_variable(
-            'softmax_weights',
-            shape=(params['num_products'], params['session_rnn_units']))
+    # Mask describing ended users, true if not more user events
+    ended_users_mask = tf.get_variable(
+        'ended_users_mask',
+        shape=(batch_size,),
+        initializer=tf.zeros_initializer(),
+        trainable=False,
+        dtype=tf.bool)
 
-        # Biases for above
-        softmax_biases = tf.get_variable(
-            'softmax_biases',
-            shape=(params['num_products'],))
+    # Hidden states of session_rnn
+    session_hidden_states = tf.get_variable(
+        'session_hidden_states',
+        shape=(batch_size, params['session_rnn_units']),
+        initializer=tf.zeros_initializer(),
+        trainable=False)
 
-    return (ended_sessions_mask,
+    # User Embedding, updated by user_rnn
+    user_embeddings = tf.get_variable(
+        'user_embeddings',
+        shape=(params['num_users'], params['user_rnn_units']),
+        initializer=tf.zeros_initializer(),
+        trainable=False
+    )
+
+    # Softmax weights to map RNN output to product space
+    softmax_weights = tf.get_variable(
+        'softmax_weights',
+        shape=(params['num_products'], params['session_rnn_units']))
+
+    # Biases for above
+    softmax_biases = tf.get_variable(
+        'softmax_biases',
+        shape=(params['num_products'],))
+
+    return (num_ended_sessions,
+            num_ended_users,
+            ended_sessions_mask,
             ending_sessions_mask,
             ended_users_mask,
             session_hidden_states,
@@ -80,36 +98,35 @@ def setup_variables(batch_size, params):
 
 
 def setup_model(params):
-    with tf.variable_scope('', reuse=tf.AUTO_REUSE):
-        user_rnn = GRU(
-            # params['user_rnn_layers'],
-            params['user_rnn_units'],
-            return_state=True,
-            implementation=2,
-            dropout=params['user_dropout'],
-            kernel_initializer=tf.contrib.layers.xavier_initializer(),
-            recurrent_initializer=tf.contrib.layers.xavier_initializer(),
-            name='user_rnn')
+    user_rnn = GRU(
+        # params['user_rnn_layers'],
+        params['user_rnn_units'],
+        return_state=True,
+        implementation=2,
+        dropout=params['user_dropout'],
+        kernel_initializer=tf.contrib.layers.xavier_initializer(),
+        recurrent_initializer=tf.contrib.layers.xavier_initializer(),
+        name='user_rnn')
 
-        session_rnn = GRU(
-            # params['session_rnn_layers'],
-            params['session_rnn_units'],
-            return_state=True,
-            implementation=2,
-            dropout=params['session_dropout'],
-            kernel_initializer=tf.contrib.layers.xavier_initializer(),
-            recurrent_initializer=tf.contrib.layers.xavier_initializer(),
-            name='session_rnn')
+    session_rnn = GRU(
+        # params['session_rnn_layers'],
+        params['session_rnn_units'],
+        return_state=True,
+        implementation=2,
+        dropout=params['session_dropout'],
+        kernel_initializer=tf.contrib.layers.xavier_initializer(),
+        recurrent_initializer=tf.contrib.layers.xavier_initializer(),
+        name='session_rnn')
 
-        # Layer to predict new session initialization
-        user2session_layer = Dense(
-            params['session_rnn_units'],
-            input_shape=(params['user_rnn_units'],),
-            activation='tanh',
-            name='user2session_layer')
+    # Layer to predict new session initialization
+    user2session_layer = Dense(
+        params['session_rnn_units'],
+        input_shape=(params['user_rnn_units'],),
+        activation='tanh',
+        name='user2session_layer')
 
-        # Dropout layer for session initialization
-        user2session_dropout = Dropout(params['init_dropout'])
+    # Dropout layer for session initialization
+    user2session_dropout = Dropout(params['init_dropout'])
 
     return (user_rnn,
             session_rnn,
@@ -121,7 +138,9 @@ def model_fn(features, labels, mode, params):
 
     batch_size = features['UserId'].shape[0]
 
-    (ended_sessions_mask,
+    (num_ended_sessions,
+        num_ended_users,
+        ended_sessions_mask,
         ending_sessions_mask,
         ended_users_mask,
         session_hidden_states,
@@ -189,17 +208,19 @@ def model_fn(features, labels, mode, params):
         name='update_user_embeddings'
     )
 
-    tf.summary.scalar(
-        'observe/num_ended_sessions',
-        tf.reduce_sum(tf.cast(ended_sessions_mask, tf.int32)))
+    num_ended_sessions = tf.add(
+        tf.reduce_sum(tf.cast(ended_sessions_mask, tf.int32)),
+        num_ended_sessions
+    )
 
-    tf.summary.scalar(
-        'observe/num_ended_users',
-        tf.reduce_sum(tf.cast(ended_users_mask, tf.int32)))
+    num_ended_users = tf.add(
+        tf.reduce_sum(tf.cast(ended_users_mask, tf.int32)),
+        num_ended_users
+    )
 
-    tf.summary.scalar(
-        'observe/num_user_updates',
-        tf.reduce_sum(tf.cast(ended_sessions_same_user_mask, tf.int32)))
+    tf.summary.scalar('observe/num_ended_sessions', num_ended_sessions)
+
+    tf.summary.scalar('observe/num_ended_users', num_ended_users)
 
     # Reset Session Hidden to 0 when a user has ended in the batch before
     session_hidden_states = tf.where(
