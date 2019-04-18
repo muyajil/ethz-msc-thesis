@@ -87,6 +87,8 @@ def setup_model(params):
         return_state=True,
         implementation=2,
         dropout=params['user_dropout'],
+        kernel_initializer=tf.contrib.layers.xavier_initializer(),
+        recurrent_initializer=tf.contrib.layers.xavier_initializer(),
         name='user_rnn')
 
     session_rnn = GRU(
@@ -95,6 +97,8 @@ def setup_model(params):
         return_state=True,
         implementation=2,
         dropout=params['session_dropout'],
+        kernel_initializer=tf.contrib.layers.xavier_initializer(),
+        recurrent_initializer=tf.contrib.layers.xavier_initializer(),
         name='session_rnn')
 
     # Layer to predict new session initialization
@@ -111,60 +115,6 @@ def setup_model(params):
             session_rnn,
             user2session_layer,
             user2session_dropout)
-
-
-def handle_ended_sessions(
-        ended_sessions_mask,
-        session_hidden_states,
-        user_embeddings,
-        user_rnn,
-        user2session_layer,
-        user2session_dropout,
-        features,
-        params):
-
-    # Get user_hidden_states to update
-    # -> all the ones that ended a session in the previous batch
-    user_hidden_states = tf.map_fn(
-        lambda x: tf.cond(
-            x[1],
-            true_fn=lambda: tf.nn.embedding_lookup(user_embeddings, x[0]),
-            false_fn=lambda: tf.zeros(params['user_rnn_units'])
-        ),
-        [
-            features['UserEmbeddingId'],
-            ended_sessions_mask
-        ],
-        dtype=tf.float32,
-        name='get_user_hidden_states_to_update')
-
-    # Compute new user representation for all users in current batch
-    new_session_hidden_states_seed, new_user_hidden_states = user_rnn.apply(
-        tf.expand_dims(session_hidden_states, 1),
-        initial_state=user_hidden_states)
-
-    # Predict new session initialization for next session
-    new_session_hidden_states = user2session_layer.apply(
-        new_session_hidden_states_seed)
-
-    new_session_hidden_states = user2session_dropout.apply(
-        new_session_hidden_states
-    )
-
-    # Select new session initialization for new sessions
-    session_hidden_states = tf.where(
-        ended_sessions_mask,
-        new_session_hidden_states,
-        session_hidden_states,
-        name='initialize_new_sessions')
-
-    # Update user hidden states where the session ended
-    tf.scatter_update(
-        user_embeddings,
-        tf.boolean_mask(features['UserEmbeddingId'], ended_sessions_mask),
-        tf.boolean_mask(new_user_hidden_states, ended_sessions_mask),
-        name='update_user_embeddings'
-    )
 
 
 def model_fn(features, labels, mode, params):
@@ -184,18 +134,59 @@ def model_fn(features, labels, mode, params):
         user2session_layer,
         user2session_dropout) = setup_model(params)
 
-    handle_ended_sessions(
+    ended_sessions_same_user_mask = tf.logical_and(
         ended_sessions_mask,
-        session_hidden_states,
-        user_embeddings,
-        user_rnn,
-        user2session_layer,
-        user2session_dropout,
-        features,
-        params
+        tf.logical_not(ended_users_mask)
     )
 
-    # Reset Session Hidden to 0 when a has ended in the batch before
+    # Get user_hidden_states to update
+    # -> all the ones that ended a session in the previous batch
+    user_hidden_states = tf.map_fn(
+        lambda x: tf.cond(
+            x[1],
+            true_fn=lambda: tf.nn.embedding_lookup(user_embeddings, x[0]),
+            false_fn=lambda: tf.zeros(params['user_rnn_units'])
+        ),
+        [
+            features['UserEmbeddingId'],
+            ended_sessions_same_user_mask
+        ],
+        dtype=tf.float32,
+        name='get_user_hidden_states_to_update')
+
+    # Compute new user representation for all users in current batch
+    new_session_hidden_states_seed, new_user_hidden_states = user_rnn.apply(
+        tf.expand_dims(session_hidden_states, 1),
+        initial_state=user_hidden_states)
+
+    # Predict new session initialization for next session
+    new_session_hidden_states = user2session_layer.apply(
+        new_session_hidden_states_seed)
+
+    new_session_hidden_states = user2session_dropout.apply(
+        new_session_hidden_states
+    )
+
+    # Select new session initialization for new sessions
+    session_hidden_states = tf.where(
+        ended_sessions_same_user_mask,
+        new_session_hidden_states,
+        session_hidden_states,
+        name='initialize_new_sessions')
+
+    # Update user hidden states where the session ended
+    tf.scatter_update(
+        user_embeddings,
+        tf.boolean_mask(
+            features['UserEmbeddingId'], 
+            ended_sessions_same_user_mask),
+        tf.boolean_mask(
+            new_user_hidden_states, 
+            ended_sessions_same_user_mask),
+        name='update_user_embeddings'
+    )
+
+    # Reset Session Hidden to 0 when a user has ended in the batch before
     session_hidden_states = tf.where(
         ended_sessions_mask,
         tf.zeros(tf.shape(session_hidden_states)),
