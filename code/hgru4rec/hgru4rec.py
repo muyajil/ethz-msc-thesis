@@ -79,17 +79,7 @@ def setup_variables(batch_size, params):
             softmax_biases)
 
 
-def model_fn(features, labels, mode, params):
-
-    batch_size = features['UserId'].shape[0]
-
-    (ended_sessions_mask,
-        ending_sessions_mask,
-        ended_users_mask,
-        session_hidden_states,
-        user_embeddings,
-        softmax_weights,
-        softmax_biases) = setup_variables(batch_size, params)
+def setup_model(params):
 
     user_rnn = GRU(
         # params['user_rnn_layers'],
@@ -117,26 +107,36 @@ def model_fn(features, labels, mode, params):
     # Dropout layer for session initialization
     user2session_dropout = Dropout(params['init_dropout'])
 
-    # Reset Session Hidden States to 0 for new users
-    session_hidden_states = tf.where(
-        ended_users_mask,
-        tf.zeros(tf.shape(session_hidden_states)),
-        session_hidden_states,
-        name='reset_session_hidden_states')
+    return (user_rnn,
+            session_rnn,
+            user2session_layer,
+            user2session_dropout)
 
-    # Get user_hidden_states
+
+def handle_ended_sessions(
+        ended_sessions_mask,
+        session_hidden_states,
+        user_embeddings,
+        user_rnn,
+        user2session_layer,
+        user2session_dropout,
+        features,
+        params):
+
+    # Get user_hidden_states to update
+    # -> all the ones that ended a session in the previous batch
     user_hidden_states = tf.map_fn(
         lambda x: tf.cond(
             x[1],
-            false_fn=lambda: tf.nn.embedding_lookup(user_embeddings, x[0]),
-            true_fn=lambda: tf.zeros(params['user_rnn_units'])
+            true_fn=lambda: tf.nn.embedding_lookup(user_embeddings, x[0]),
+            false_fn=lambda: tf.zeros(params['user_rnn_units'])
         ),
         [
             features['UserEmbeddingId'],
-            ended_users_mask
+            ended_sessions_mask
         ],
         dtype=tf.float32,
-        name='get_user_hidden_states')
+        name='get_user_hidden_states_to_update')
 
     # Compute new user representation for all users in current batch
     new_session_hidden_states_seed, new_user_hidden_states = user_rnn.apply(
@@ -161,10 +161,46 @@ def model_fn(features, labels, mode, params):
     # Update user hidden states where the session ended
     tf.scatter_update(
         user_embeddings,
-        tf.boolean_mask(features['UserEmbeddingId'], ended_users_mask),
-        tf.boolean_mask(new_user_hidden_states, ended_users_mask),
+        tf.boolean_mask(features['UserEmbeddingId'], ended_sessions_mask),
+        tf.boolean_mask(new_user_hidden_states, ended_sessions_mask),
         name='update_user_embeddings'
     )
+
+
+def model_fn(features, labels, mode, params):
+
+    batch_size = features['UserId'].shape[0]
+
+    (ended_sessions_mask,
+        ending_sessions_mask,
+        ended_users_mask,
+        session_hidden_states,
+        user_embeddings,
+        softmax_weights,
+        softmax_biases) = setup_variables(batch_size, params)
+
+    (user_rnn,
+        session_rnn,
+        user2session_layer,
+        user2session_dropout) = setup_model(params)
+
+    handle_ended_sessions(
+        ended_sessions_mask,
+        session_hidden_states,
+        user_embeddings,
+        user_rnn,
+        user2session_layer,
+        user2session_dropout,
+        features,
+        params
+    )
+
+    # Reset Session Hidden to 0 when a has ended in the batch before
+    session_hidden_states = tf.where(
+        ended_sessions_mask,
+        tf.zeros(tf.shape(session_hidden_states)),
+        session_hidden_states,
+        name='reset_session_hidden_states')
 
     # Compute new mask for ended sessions
     ended_sessions_mask = tf.cast(
@@ -288,14 +324,15 @@ def model_fn(features, labels, mode, params):
         grads_and_vars = optimizer.compute_gradients(loss)
 
         for grad, var in grads_and_vars:
-            if isinstance(grad, tf.IndexedSlices):
-                tf.summary.histogram(
-                    "gradients/{}".format(var.name),
-                    grad.values)
-            else:
-                tf.summary.histogram(
-                    "gradients/{}".format(var.name),
-                    grad)
+            if grad is not None:
+                if isinstance(grad, tf.IndexedSlices):
+                    tf.summary.histogram(
+                        "gradients/{}".format(var.name),
+                        grad.values)
+                else:
+                    tf.summary.histogram(
+                        "gradients/{}".format(var.name),
+                        grad)
 
             if isinstance(var, tf.IndexedSlices):
                 tf.summary.histogram(
