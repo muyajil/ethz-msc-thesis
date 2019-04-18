@@ -12,3 +12,4 @@
 writeup/build/*
 *.dvi
 artifacts/*
+*.pyc

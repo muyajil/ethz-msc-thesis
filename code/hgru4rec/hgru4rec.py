@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras.layers import GRU, Dense, Dropout
 from tensorflow.contrib.cudnn_rnn import CudnnGRU
+from tensorflow.contrib.framework import is_tensor
 
 
 def top1_loss(logits, batch_size):
@@ -136,8 +137,8 @@ def model_fn(features, labels, mode, params):
     user_hidden_states = tf.map_fn(
         lambda x: tf.cond(
             x[1],
-            lambda: tf.nn.embedding_lookup(user_embeddings, x[0]),
-            lambda: tf.zeros(params['user_rnn_units'])
+            false_fn=lambda: tf.nn.embedding_lookup(user_embeddings, x[0]),
+            true_fn=lambda: tf.zeros(params['user_rnn_units'])
         ),
         [
             features['UserEmbeddingId'],
@@ -211,8 +212,8 @@ def model_fn(features, labels, mode, params):
     relevant_one_hots = tf.map_fn(
         lambda x: tf.cond(
             x[1],
-            lambda: tf.one_hot(x[0], params['num_products']),
-            lambda: tf.zeros(params['num_products'])
+            true_fn=lambda: tf.one_hot(x[0], params['num_products']),
+            false_fn=lambda: tf.zeros(params['num_products'])
         ),
         [
             features['EmbeddingId'],
@@ -313,7 +314,15 @@ def model_fn(features, labels, mode, params):
 
         grads_and_vars = optimizer.compute_gradients(loss)
 
-        tf.summary.histogram('observe/gradients', grads_and_vars[0])
+        for grad, var in grads_and_vars:
+            if isinstance(grad, tf.IndexedSlices):
+                tf.summary.histogram(
+                    "gradients/{}".format(var.name),
+                    grad.values)
+            else:
+                tf.summary.histogram(
+                    "gradients/{}".format(var.name),
+                    grad)
 
         train_op = optimizer.apply_gradients(
             grads_and_vars,
