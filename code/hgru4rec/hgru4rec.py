@@ -347,14 +347,14 @@ def model_fn(features, labels, mode, params):
         precision_at_10 = precision_at_k(
             labels=relevant_labels,
             predictions=logits,
-            k=5,
+            k=10,
             name='compute_precision_at_k'
         )
 
         recall_at_10 = recall_at_k(
             labels=relevant_labels,
             predictions=logits,
-            k=5,
+            k=10,
             name='compute_recall_at_10'
         )
 
