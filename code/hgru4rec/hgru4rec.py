@@ -57,13 +57,15 @@ def setup_variables(batch_size, params):
     session_hidden_states = tf.get_variable(
         'session_hidden_states',
         shape=(batch_size, params['session_rnn_units']),
-        initializer=tf.zeros_initializer())
+        initializer=tf.zeros_initializer(),
+        trainable=False)
 
     # User Embedding, updated by user_rnn
     user_embeddings = tf.get_variable(
         'user_embeddings',
         shape=(params['num_users'], params['user_rnn_units']),
-        initializer=tf.zeros_initializer()
+        initializer=tf.zeros_initializer(),
+        trainable=False
     )
 
     # Softmax weights to map RNN output to product space
