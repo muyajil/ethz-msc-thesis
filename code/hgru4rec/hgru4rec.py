@@ -189,6 +189,18 @@ def model_fn(features, labels, mode, params):
         name='update_user_embeddings'
     )
 
+    tf.summary.scalar(
+        'observe/num_ended_sessions',
+        tf.reduce_sum(tf.cast(ended_sessions_mask, tf.int32)))
+
+    tf.summary.scalar(
+        'observe/num_ended_users',
+        tf.reduce_sum(tf.cast(ended_users_mask, tf.int32)))
+
+    tf.summary.scalar(
+        'observe/num_user_updates',
+        tf.reduce_sum(tf.cast(ended_sessions_same_user_mask, tf.int32)))
+
     # Reset Session Hidden to 0 when a user has ended in the batch before
     session_hidden_states = tf.where(
         ended_users_mask,
