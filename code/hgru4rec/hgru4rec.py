@@ -337,7 +337,7 @@ def model_fn(features, labels, mode, params):
             'eval_metrics/top_1_loss': loss
         }
 
-        return tf.estimaor.EstimatorSpec(
+        return tf.estimator.EstimatorSpec(
             mode,
             loss=loss,
             eval_metric_ops=eval_metric_ops)
