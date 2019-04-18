@@ -73,8 +73,7 @@ def setup_variables(batch_size, params):
         'user_embeddings',
         shape=(params['num_users'], params['user_rnn_units']),
         initializer=tf.zeros_initializer(),
-        trainable=False
-    )
+        trainable=False)
 
     # Softmax weights to map RNN output to product space
     softmax_weights = tf.get_variable(
