@@ -23,7 +23,8 @@ docker run \
         --epochs=10 \
         --user_dropout=0.0 \
         --session_dropout=0.1 \
-        --init_dropout=0.0
+        --init_dropout=0.0 \
+        --learning_rate=0.4
 
 # Attach to logs
 docker logs -f <container_name>

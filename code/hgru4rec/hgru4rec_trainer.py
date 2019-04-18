@@ -29,6 +29,7 @@ def main():
     # Model run parameters
     parser.add_argument('--train_steps', type=int)
     parser.add_argument('--epochs', type=int, default=1)
+    parser.add_argument('--learning_rate', type=float)
 
     args = parser.parse_args()
 

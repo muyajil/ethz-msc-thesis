@@ -310,7 +310,8 @@ def model_fn(features, labels, mode, params):
 
     if mode == tf.estimator.ModeKeys.TRAIN:
 
-        optimizer = tf.train.AdagradOptimizer(learning_rate=0.3)
+        optimizer = tf.train.AdagradOptimizer(
+            learning_rate=params['learning_rate'])
 
         grads_and_vars = optimizer.compute_gradients(loss)
 
