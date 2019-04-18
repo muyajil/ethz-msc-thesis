@@ -19,15 +19,6 @@ def top1_loss(logits, batch_size):
     return loss
 
 
-def hitrate_at_k(labels, softmax_predictions, k):
-    in_top_k = tf.nn.in_top_k(softmax_predictions, labels, k)
-    hitrate = tf.divide(
-        tf.reduce_sum(tf.cast(in_top_k, tf.int32)),
-        tf.shape(labels)[0])
-
-    return hitrate
-
-
 def setup_variables(batch_size, params):
 
     # Mask describing ended sessions, true if session ended
@@ -171,7 +162,7 @@ def model_fn(features, labels, mode, params):
     tf.scatter_update(
         user_embeddings,
         tf.boolean_mask(features['UserEmbeddingId'], ended_users_mask),
-        new_user_hidden_states,
+        tf.boolean_mask(new_user_hidden_states, ended_users_mask),
         name='update_user_embeddings'
     )
 
@@ -306,6 +297,16 @@ def model_fn(features, labels, mode, params):
                     "gradients/{}".format(var.name),
                     grad)
 
+            if isinstance(var, tf.IndexedSlices):
+                tf.summary.histogram(
+                    "variables/{}".format(var.name),
+                    var.values)
+            else:
+                tf.summary.histogram(
+                    "variables/{}".format(var.name),
+                    var
+                )
+
         train_op = optimizer.apply_gradients(
             grads_and_vars,
             global_step=tf.train.get_or_create_global_step())
@@ -316,14 +317,14 @@ def model_fn(features, labels, mode, params):
 
         precision_at_10 = precision_at_k(
             labels=relevant_labels,
-            logits=logits,
+            predictions=logits,
             k=5,
             name='compute_precision_at_k'
         )
 
         recall_at_10 = recall_at_k(
             labels=relevant_labels,
-            logits=logits,
+            predictions=logits,
             k=5,
             name='compute_recall_at_10'
         )
