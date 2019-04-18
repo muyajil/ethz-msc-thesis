@@ -178,7 +178,7 @@ def model_fn(features, labels, mode, params):
         name='initialize_new_sessions')
 
     # Update user hidden states where the session ended
-    tf.scatter_update(
+    user_embeddings = tf.scatter_update(
         user_embeddings,
         tf.boolean_mask(
             features['UserEmbeddingId'],
