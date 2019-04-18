@@ -19,7 +19,9 @@ def top1_loss(logits, batch_size):
     return loss
 
 
-def setup_variables(batch_size, params):
+def model_fn(features, labels, mode, params):
+
+    batch_size = features['UserId'].shape[0]
 
     num_ended_sessions = tf.get_variable(
         'num_ended_sessions',
@@ -83,18 +85,6 @@ def setup_variables(batch_size, params):
         'softmax_biases',
         shape=(params['num_products'],))
 
-    return (num_ended_sessions,
-            num_ended_users,
-            ended_sessions_mask,
-            ending_sessions_mask,
-            ended_users_mask,
-            session_hidden_states,
-            user_embeddings,
-            softmax_weights,
-            softmax_biases)
-
-
-def setup_model(params):
     user_rnn = GRU(
         # params['user_rnn_layers'],
         params['user_rnn_units'],
@@ -124,31 +114,6 @@ def setup_model(params):
 
     # Dropout layer for session initialization
     user2session_dropout = Dropout(params['init_dropout'])
-
-    return (user_rnn,
-            session_rnn,
-            user2session_layer,
-            user2session_dropout)
-
-
-def model_fn(features, labels, mode, params):
-
-    batch_size = features['UserId'].shape[0]
-
-    (num_ended_sessions,
-        num_ended_users,
-        ended_sessions_mask,
-        ending_sessions_mask,
-        ended_users_mask,
-        session_hidden_states,
-        user_embeddings,
-        softmax_weights,
-        softmax_biases) = setup_variables(batch_size, params)
-
-    (user_rnn,
-        session_rnn,
-        user2session_layer,
-        user2session_dropout) = setup_model(params)
 
     # Ended sessions where the user did not change
     ended_sessions_same_user_mask = tf.logical_and(
