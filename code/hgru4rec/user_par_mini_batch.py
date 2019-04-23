@@ -76,6 +76,7 @@ class UserParallelMiniBatchDataset(object):
         while True:
             next_batch = dict()
             for idx in active_users:
+                # Catch no more users case
                 if active_users[idx] is None:
                     # TODO: how to handle no more users?
                     next_batch[idx] = \
@@ -91,20 +92,24 @@ class UserParallelMiniBatchDataset(object):
                             }
                         )
                     continue
-                next_event = self.get_next_event_or_none(active_users[idx])
-                while next_event is None:
-                    next_user = self.get_next_user_or_none(users)
-                    if next_user is None:
-                        tf.logging.info('There are no more new users')
-                        active_users[idx] = None
-                        break
-                    else:
-                        active_users[idx] = next_user
-                        next_event = self.get_next_event_or_none(
-                            active_users[idx])
-                        next_event['UserChanged'] = 1
+                # There are still users available
                 else:
-                    next_event['UserChanged'] = 0
+                    next_event = self.get_next_event_or_none(active_users[idx])
+                    while next_event is None:
+                        next_user = self.get_next_user_or_none(users)
+                        if next_user is None:
+                            tf.logging.info('There are no more new users')
+                            active_users[idx] = None
+                            break
+                        else:
+                            active_users[idx] = next_user
+                            next_event = self.get_next_event_or_none(
+                                active_users[idx])
+                            next_event['UserChanged'] = 1
+
+                    if 'UserChanged' not in next_event:
+                        next_event['UserChanged'] = 0
+
                     next_batch[idx] = \
                         (active_users[idx]['UserId'], next_event)
             if len(set(map(lambda x: str(x), next_batch.values()))) == 1:
