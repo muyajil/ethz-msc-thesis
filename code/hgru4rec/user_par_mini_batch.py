@@ -36,10 +36,17 @@ class UserParallelMiniBatchDataset(object):
 
             sorted_events = sorted(
                 sorted_session['Events'], key=lambda z: z['Timestamp'])
-            for event in sorted_events:
-                yield event
+            for idx, event in enumerate(sorted_events):
+                if idx == 0:
+                    event['SessionChanged'] = 1
+                else:
+                    event['SessionChanged'] = 0
 
-            yield {'ProductId': -1, 'EmbeddingId': -1, 'UserEmbeddingId': -1}
+                if idx == (len(sorted_events) - 1):
+                    event['LastSessionEvent'] = 1
+                else:
+                    event['LastSessionEvent'] = 0
+                yield event
 
     def get_next_event_or_none(self, active_user):
         try:
@@ -70,8 +77,19 @@ class UserParallelMiniBatchDataset(object):
             next_batch = dict()
             for idx in active_users:
                 if active_users[idx] is None:
+                    # TODO: how to handle no more users?
                     next_batch[idx] = \
-                        (-1, {'ProductId': -1, 'EmbeddingId': -1})
+                        (
+                            -1,
+                            {
+                                'ProductId': -1,
+                                'EmbeddingId': -1,
+                                'UserEmbeddingId': -1,
+                                'SessionChanged': 0,
+                                'LastSessionEvent': 0,
+                                'UserChanged': 0
+                            }
+                        )
                     continue
                 next_event = self.get_next_event_or_none(active_users[idx])
                 while next_event is None:
@@ -84,7 +102,9 @@ class UserParallelMiniBatchDataset(object):
                         active_users[idx] = next_user
                         next_event = self.get_next_event_or_none(
                             active_users[idx])
+                        next_event['UserChanged'] = 1
                 else:
+                    next_event['UserChanged'] = 0
                     next_batch[idx] = \
                         (active_users[idx]['UserId'], next_event)
             if len(set(map(lambda x: str(x), next_batch.values()))) == 1:
@@ -108,7 +128,10 @@ class UserParallelMiniBatchDataset(object):
                         x[0],
                         x[1]['ProductId'],
                         x[1]['EmbeddingId'],
-                        x[1]['UserEmbeddingId']), features))
+                        x[1]['UserEmbeddingId'],
+                        x[1]['SessionChanged'],
+                        x[1]['LastSessionEvent'],
+                        x[1]['UserChanged']), features))
 
                 yield features, labels
                 features = next_features
@@ -122,13 +145,19 @@ def generate_feature_maps(features, labels):
             'UserId': x[0],
             'ProductId': x[1],
             'EmbeddingId': x[2],
-            'UserEmbeddingId': x[3]},
+            'UserEmbeddingId': x[3],
+            'SessionChanged': x[4],
+            'LastSessionEvent': x[5],
+            'UserChanged': x[6]},
         features,
         dtype={
             'UserId': tf.int64,
             'ProductId': tf.int64,
             'EmbeddingId': tf.int64,
-            'UserEmbeddingId': tf.int64})
+            'UserEmbeddingId': tf.int64,
+            'SessionChanged': tf.int64,
+            'LastSessionEvent': tf.int64,
+            'UserChanged': tf.int64})
 
     labels = tf.map_fn(
         lambda x: {'ProductId': x[0], 'EmbeddingId': x[1]},
@@ -150,7 +179,7 @@ def input_fn(
         dataset_wrapper.feature_and_label_generator,
         output_types=(tf.int64, tf.int64),
         output_shapes=(
-            tf.TensorShape((batch_size, 4)),
+            tf.TensorShape((batch_size, 7)),
             tf.TensorShape((batch_size, 2))))
 
     dataset = dataset.map(generate_feature_maps)
