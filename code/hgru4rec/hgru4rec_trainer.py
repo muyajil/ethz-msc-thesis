@@ -55,15 +55,12 @@ def main():
         input_fn=lambda: input_fn(
             args.batch_size,
             args.train_prefix,
-            epochs=args.epochs
-        ))
+            epochs=args.epochs))
 
     eval_spec = tf.estimator.EvalSpec(
         input_fn=lambda: input_fn(
             args.batch_size,
-            args.eval_prefix,
-        )
-    )
+            args.eval_prefix))
 
     tf.estimator.train_and_evaluate(
         estimator=model_instance,

@@ -28,51 +28,27 @@ def model_fn(features, labels, mode, params):
         shape=(),
         initializer=tf.zeros_initializer(),
         trainable=False,
-        dtype=tf.int32)
+        dtype=tf.int64)
 
     num_ended_users = tf.get_variable(
         'num_ended_users',
         shape=(),
         initializer=tf.zeros_initializer(),
         trainable=False,
-        dtype=tf.int32)
-
-    # Mask describing ended sessions, true if session ended
-    ended_sessions_mask = tf.get_variable(
-        'ended_sessions_mask',
-        shape=(batch_size,),
-        initializer=tf.zeros_initializer(),
-        trainable=False,
-        dtype=tf.bool)
-
-    # Mask describing ending sessions, true if session is ending
-    ending_sessions_mask = tf.get_variable(
-        'ending_sessions_mask',
-        shape=(batch_size,),
-        initializer=tf.zeros_initializer(),
-        trainable=False,
-        dtype=tf.bool)
-
-    # Mask describing ended users, true if not more user events
-    ended_users_mask = tf.get_variable(
-        'ended_users_mask',
-        shape=(batch_size,),
-        initializer=tf.zeros_initializer(),
-        trainable=False,
-        dtype=tf.bool)
+        dtype=tf.int64)
 
     # Hidden states of session_rnn
     session_hidden_states = tf.get_variable(
         'session_hidden_states',
         shape=(batch_size, params['session_rnn_units']),
-        initializer=tf.zeros_initializer(),
+        # initializer=tf.zeros_initializer(),
         trainable=False)
 
     # User Embedding, updated by user_rnn
     user_embeddings = tf.get_variable(
         'user_embeddings',
         shape=(params['num_users'], params['user_rnn_units']),
-        initializer=tf.zeros_initializer(),
+        # initializer=tf.zeros_initializer(),
         trainable=False)
 
     # Softmax weights to map RNN output to product space
@@ -91,8 +67,8 @@ def model_fn(features, labels, mode, params):
         return_state=True,
         implementation=2,
         dropout=params['user_dropout'],
-        kernel_initializer=tf.contrib.layers.xavier_initializer(),
-        recurrent_initializer=tf.contrib.layers.xavier_initializer(),
+        # kernel_initializer=tf.contrib.layers.xavier_initializer(),
+        # recurrent_initializer=tf.contrib.layers.xavier_initializer(),
         name='user_rnn')
 
     session_rnn = GRU(
@@ -101,8 +77,8 @@ def model_fn(features, labels, mode, params):
         return_state=True,
         implementation=2,
         dropout=params['session_dropout'],
-        kernel_initializer=tf.contrib.layers.xavier_initializer(),
-        recurrent_initializer=tf.contrib.layers.xavier_initializer(),
+        # kernel_initializer=tf.contrib.layers.xavier_initializer(),
+        # recurrent_initializer=tf.contrib.layers.xavier_initializer(),
         name='session_rnn')
 
     # Layer to predict new session initialization
@@ -115,33 +91,53 @@ def model_fn(features, labels, mode, params):
     # Dropout layer for session initialization
     user2session_dropout = Dropout(params['init_dropout'])
 
-    # Ended sessions where the user did not change
-    ended_sessions_same_user_mask = tf.logical_and(
-        ended_sessions_mask,
-        tf.logical_not(ended_users_mask)
+    # Update stats
+    num_ended_sessions = tf.assign(
+        num_ended_sessions,
+        tf.add(
+            tf.reduce_sum(features['SessionChanged']),
+            num_ended_sessions))
+
+    num_ended_users = tf.assign(
+        num_ended_users,
+        tf.add(
+            tf.reduce_sum(features['UserChanged']),
+            num_ended_users))
+
+    tf.summary.scalar('observe/num_ended_sessions', num_ended_sessions)
+
+    tf.summary.scalar('observe/num_ended_users', num_ended_users)
+
+    # Get session hidden states to update
+    indices_to_update = tf.squeeze(
+        tf.where(
+            tf.cast(features['SessionChanged'], tf.bool),
+            name='get_indices_to_update'
+        ),
+        axis=1
     )
 
-    # Get user_hidden_states to update
-    # The hidden states to update are the ones where a session ended
-    # but the user has stayed the same
-    # The other hidden states are 0
-    user_hidden_states = tf.map_fn(
-        lambda x: tf.cond(
-            x[1],
-            true_fn=lambda: tf.nn.embedding_lookup(user_embeddings, x[0]),
-            false_fn=lambda: tf.zeros(params['user_rnn_units'])
-        ),
-        [
-            features['UserEmbeddingId'],
-            ended_sessions_same_user_mask
-        ],
-        dtype=tf.float32,
-        name='get_user_hidden_states_to_update')
+    session_states_to_update = tf.gather(
+        session_hidden_states,
+        indices_to_update,
+        name='get_session_states_to_update'
+    )
+
+    # Get user embeddings to update
+    user_embedding_ids_to_update = tf.gather(
+        features['UserEmbeddingId'],
+        indices_to_update
+    )
+
+    user_embeddings_to_update = tf.nn.embedding_lookup(
+        user_embeddings,
+        user_embedding_ids_to_update
+    )
 
     # Compute new user representation for all users in current batch
-    new_session_hidden_states_seed, new_user_hidden_states = user_rnn.apply(
-        tf.expand_dims(session_hidden_states, 1),
-        initial_state=user_hidden_states)
+    new_session_hidden_states_seed, new_user_embeddings = user_rnn.apply(
+        tf.expand_dims(session_states_to_update, 1),
+        initial_state=user_embeddings_to_update)
 
     # Predict new session initialization for next session
     new_session_hidden_states = user2session_layer.apply(
@@ -150,126 +146,139 @@ def model_fn(features, labels, mode, params):
     new_session_hidden_states = user2session_dropout.apply(
         new_session_hidden_states)
 
-    # Select new session initialization for new sessions
-    session_hidden_states = tf.where(
-        ended_sessions_same_user_mask,
+    # Update session hidden states
+    scattered_new_states = tf.scatter_nd(
+        tf.cast(tf.expand_dims(indices_to_update, axis=1), tf.int32),
         new_session_hidden_states,
-        session_hidden_states,
-        name='initialize_new_sessions')
+        tf.shape(session_hidden_states)
+    )
 
-    # Update user hidden states where the session ended
-    user_embeddings = tf.scatter_update(
-        user_embeddings,
-        tf.boolean_mask(
-            features['UserEmbeddingId'],
-            ended_sessions_same_user_mask),
-        tf.boolean_mask(
-            new_user_hidden_states,
-            ended_sessions_same_user_mask),
-        name='update_user_embeddings')
+    merged_session_hidden_states = tf.where(
+        tf.cast(features['SessionChanged'], tf.bool),
+        scattered_new_states,
+        session_hidden_states)
 
-    num_ended_sessions = tf.add(
-        tf.reduce_sum(tf.cast(ended_sessions_mask, tf.int32)),
-        num_ended_sessions)
-
-    num_ended_users = tf.add(
-        tf.reduce_sum(tf.cast(ended_users_mask, tf.int32)),
-        num_ended_users)
-
-    tf.summary.scalar('observe/num_ended_sessions', num_ended_sessions)
-
-    tf.summary.scalar('observe/num_ended_users', num_ended_users)
-
-    # Reset Session Hidden to 0 when a user has ended in the batch before
-    session_hidden_states = tf.where(
-        ended_users_mask,
-        tf.zeros(tf.shape(session_hidden_states)),
-        session_hidden_states,
-        name='reset_session_hidden_states')
-
-    # Compute new mask for ended sessions
-    ended_sessions_mask = tf.cast(
-        tf.where(
-            tf.equal(features['ProductId'], -1),
-            tf.ones(tf.shape(ended_sessions_mask)),
-            tf.zeros(tf.shape(ended_sessions_mask)),
-            name='compute_ended_sessions'),
-        tf.bool)
-
-    # Compute new mask for ending sessions
-    ending_sessions_mask = tf.cast(
-        tf.where(
-            tf.equal(labels['ProductId'], -1),
-            tf.ones(tf.shape(ending_sessions_mask)),
-            tf.zeros(tf.shape(ending_sessions_mask)),
-            name='compute_ending_sessions'),
-        tf.bool)
-
-    # Compute new mask for ended users
-    ended_users_mask = tf.cast(
-        tf.where(
-            tf.equal(features['UserId'], -1),
-            tf.ones(tf.shape(ended_users_mask)),
-            tf.zeros(tf.shape(ended_users_mask)),
-            name='compute_ended_users'),
-        tf.bool)
-
-    # Relevant sessions have not ended and do not end in the next step
-    relevant_sessions_mask = tf.logical_not(
-        tf.logical_or(
-            ended_sessions_mask,
-            ending_sessions_mask))
-
-    # Get one-hot encoding of products
-    relevant_one_hots = tf.map_fn(
-        lambda x: tf.cond(
-            x[1],
-            true_fn=lambda: tf.one_hot(x[0], params['num_products']),
-            false_fn=lambda: tf.zeros(params['num_products'])
+    session_hidden_states = tf.add(
+        tf.multiply(
+            session_hidden_states,
+            tf.zeros_like(session_hidden_states)
         ),
-        [
-            features['EmbeddingId'],
-            relevant_sessions_mask
-        ],
-        dtype=tf.float32,
-        name='get_relevant_one_hots')
+        merged_session_hidden_states,
+        name='update_session_hidden_states'
+    )
 
-    # Get session hidden states for relevant sessions
-    relevant_hidden_states = tf.where(
-        relevant_sessions_mask,
-        session_hidden_states,
-        tf.zeros(tf.shape(session_hidden_states)),
-        name='get_relevant_session_hidden_states')
+    # Update user embeddings
+    scattered_new_embeddings = tf.scatter_nd(
+        tf.cast(tf.expand_dims(
+            user_embedding_ids_to_update, axis=1), tf.int32),
+        new_user_embeddings,
+        tf.shape(user_embeddings)
+    )
+
+    scattered_mask = tf.scatter_nd(
+        tf.cast(tf.expand_dims(
+            user_embedding_ids_to_update, axis=1), tf.int32),
+        tf.ones(tf.shape(user_embedding_ids_to_update)),
+        (params['num_users'],)
+    )
+
+    merged_user_embeddings = tf.where(
+        tf.cast(scattered_mask, tf.bool),
+        scattered_new_embeddings,
+        user_embeddings)
+
+    user_embeddings = tf.add(
+        tf.multiply(
+            user_embeddings,
+            tf.zeros_like(user_embeddings)
+        ),
+        merged_user_embeddings,
+        name='update_user_embeddings'
+    )
+
+    # Compute mask for missing users
+    existing_user_indices = tf.squeeze(
+        tf.where(tf.not_equal(features['UserId'], -1)),
+        axis=1)
+
+    # Compute mask for ending sessions
+    contiuing_session_indices = tf.squeeze(
+        tf.where(
+            tf.logical_not(
+                tf.cast(features['LastSessionEvent'], tf.bool))),
+        axis=1)
+
+    # Compute relevant indices
+    relevant_indices = tf.squeeze(
+        tf.sparse.to_dense(
+            tf.sets.intersection(
+                existing_user_indices[None, :],
+                contiuing_session_indices[None, :]
+            )
+        ),
+        axis=0)
+
+    # Get session hidden states
+    relevant_session_hidden_states = tf.gather(
+            session_hidden_states,
+            relevant_indices
+        )
+
+    # Get relevant One Hot Encodings of Products
+    relevant_product_ids = tf.gather(
+        features['EmbeddingId'],
+        relevant_indices
+    )
+
+    relevant_one_hots = tf.one_hot(
+        relevant_product_ids,
+        params['num_products']
+    )
 
     # Apply Session RNN -> get new hidden states and predictions
     predictions, new_session_hidden_states = session_rnn.apply(
         tf.expand_dims(relevant_one_hots, 1),
-        initial_state=relevant_hidden_states)
-
-    # Filter out irrelevant predictions
-    predictions = tf.boolean_mask(
-        predictions,
-        relevant_sessions_mask,
-        name='filter_irrelevant_predictions')
+        initial_state=relevant_session_hidden_states)
 
     # Update session hidden states for relevant sessions
-    session_hidden_states = tf.where(
-        relevant_sessions_mask,
+    scattered_new_states = tf.scatter_nd(
+        tf.cast(tf.expand_dims(relevant_indices, axis=1), tf.int32),
         new_session_hidden_states,
-        session_hidden_states,
-        name='update_relevant_session_hidden_states')
+        tf.shape(session_hidden_states)
+    )
+
+    scattered_mask = tf.scatter_nd(
+        tf.cast(tf.expand_dims(relevant_indices, axis=1), tf.int32),
+        tf.ones(tf.shape(relevant_indices)),
+        (batch_size,)
+    )
+
+    merged_session_hidden_states = tf.where(
+        tf.cast(scattered_mask, tf.bool),
+        scattered_new_states,
+        session_hidden_states
+    )
+
+    session_hidden_states = tf.add(
+        tf.multiply(
+            session_hidden_states,
+            tf.zeros_like(session_hidden_states)
+        ),
+        merged_session_hidden_states,
+        name='update_session_hidden_states_sess'
+    )
 
     # Extract relevant labels
-    relevant_labels = tf.boolean_mask(
+    relevant_labels = tf.gather(
         labels['EmbeddingId'],
-        relevant_sessions_mask,
-        name='filter_irrelevant_labels')
+        relevant_indices
+    )
 
     # Get softmax weights for relevant labels
     samples_softmax_weights = tf.nn.embedding_lookup(
         softmax_weights,
         relevant_labels,
-        name='get_sampled_softmax_weights')
+        name='get_samples_softmax_weights')
 
     # Get softmax biases for relevant labels
     samples_softmax_biases = tf.nn.embedding_lookup(
@@ -297,9 +306,7 @@ def model_fn(features, labels, mode, params):
         transpose_b=True) + softmax_biases
 
     tf.summary.histogram('observe/predictions', logits)
-    tf.summary.scalar(
-        'observe/relevant_session',
-        tf.reduce_sum(tf.cast(relevant_sessions_mask, tf.int32)))
+    tf.summary.scalar('observe/relevant_session', tf.size(relevant_indices))
 
     if mode == tf.estimator.ModeKeys.TRAIN:
 
