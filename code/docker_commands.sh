@@ -12,19 +12,20 @@ docker run \
     -v ~/logs:/logs \
     eu.gcr.io/machinelearning-prod/ma_muy_models:user_embeddings \
     python /code/hgru4rec/hgru4rec_trainer.py \
-        --train_prefix='gs://ma-muy/baseline_dataset/train/' \
-        --eval_prefix='gs://ma-muy/baseline_dataset/eval/' \
+        --train_prefix='gs://ma-muy/03_datasets/mini_dataset/05_train/' \
+        --eval_prefix='gs://ma-muy/03_datasets/mini_dataset/06_eval/' \
         --batch_size=50 \
         --session_rnn_units=100 \
         --user_rnn_units=100 \
         --num_products=542346 \
         --num_users=307526 \
-        --log_dir='/logs/hrnn_init_small' \
-        --epochs=10 \
+        --log_dir='/logs/hrnn_init_small_mini_dataset' \
+        --epochs=100 \
         --user_dropout=0.0 \
         --session_dropout=0.1 \
         --init_dropout=0.0 \
-        --learning_rate=0.4
+        --learning_rate=0.4 \
+        --clip_gradients_at=10
 
 # Attach to logs
 docker logs -f <container_name>

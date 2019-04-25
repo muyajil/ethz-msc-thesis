@@ -30,6 +30,7 @@ def main():
     parser.add_argument('--train_steps', type=int)
     parser.add_argument('--epochs', type=int, default=1)
     parser.add_argument('--learning_rate', type=float)
+    parser.add_argument('--clip_gradients_at', type=float)
 
     args = parser.parse_args()
 
