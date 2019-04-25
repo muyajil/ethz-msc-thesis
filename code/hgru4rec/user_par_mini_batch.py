@@ -105,7 +105,8 @@ class UserParallelMiniBatchDataset(object):
                             active_users[idx] = next_user
                             next_event = self.get_next_event_or_none(
                                 active_users[idx])
-                            next_event['UserChanged'] = 1
+                            if next_event is not None:
+                                next_event['UserChanged'] = 1
 
                     if 'UserChanged' not in next_event:
                         next_event['UserChanged'] = 0

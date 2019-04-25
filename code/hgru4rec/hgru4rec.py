@@ -335,8 +335,14 @@ def model_fn(features, labels, mode, params):
                     "variables/{}".format(var.name),
                     var)
 
+        capped_grads_and_vars = [(
+            tf.clip_by_norm(
+                grad,
+                params['clip_gradients_at']),
+            var) for grad, var in gvs]
+
         train_op = optimizer.apply_gradients(
-            grads_and_vars,
+            capped_grads_and_vars,
             global_step=tf.train.get_or_create_global_step())
 
         return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op)
