@@ -339,7 +339,7 @@ def model_fn(features, labels, mode, params):
             tf.clip_by_norm(
                 grad,
                 params['clip_gradients_at']),
-            var) for grad, var in gvs]
+            var) for grad, var in grads_and_vars]
 
         train_op = optimizer.apply_gradients(
             capped_grads_and_vars,
