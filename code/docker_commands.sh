@@ -15,8 +15,8 @@ docker run \
     -v ~/logs:/logs \
     eu.gcr.io/machinelearning-prod/ma_muy_models:user_embeddings \
     python /code/hgru4rec/hgru4rec_trainer.py \
-        --train_prefix='gs://ma-muy/03_datasets/$DATASET_NAME/05_train/' \
-        --eval_prefix='gs://ma-muy/03_datasets/$DATASET_NAME/06_eval/' \
+        --train_prefix='gs://ma-muy/03_datasets/'$DATASET_NAME'/05_train/' \
+        --eval_prefix='gs://ma-muy/03_datasets/'$DATASET_NAME'/06_eval/' \
         --batch_size=50 \
         --session_rnn_units=100 \
         --user_rnn_units=100 \
