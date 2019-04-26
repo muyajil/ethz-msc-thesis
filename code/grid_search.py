@@ -64,7 +64,7 @@ if __name__ == '__main__':
             optimizer,
             batch_size,
             learning_rate) in product(*values):
-
+	config["train_steps"]
         # TODO: Set env vars and run command
 
         print(dataset_name,

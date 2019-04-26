@@ -8,7 +8,7 @@ docker run --restart always -d -v ~/ethz-msc-thesis:/ethz-msc-thesis -p 8888:888
 DATASET_NAME=mini_dataset && \
 LEARNING_RATE=0.001 && \
 BATCH_SIZE=50 && \
-LOSS_FUNCTION=cross_entropy && \
+LOSS_FUNCTION=top_1 && \
 OPTIMIZER=adam && \
 MODEL_NAME=only_session_rnn && \
 \
@@ -40,7 +40,7 @@ docker run \
         --loss_function=$LOSS_FUNCTION \
         --optimizer=$OPTIMIZER \
         --use_user_rnn=False \
-        --train_steps=1000000
+        --train_steps=100000
 
 # Attach to logs
 docker logs -f <container_name>
