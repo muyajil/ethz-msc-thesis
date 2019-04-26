@@ -28,7 +28,7 @@ docker run \
         --user_rnn_units=100 \
         --num_products=596 \
         --num_users=1089 \
-        --log_dir='/logs/hrnn_init_small/'$DATASET_NAME'/'$LOSS_FUNCTION'/'$OPTIMIZER'/bs_'$BATCH_SIZE'/lr_'$LEARNING_RATE'/' \
+        --log_dir='/logs/only_session_rnn/'$DATASET_NAME'/'$LOSS_FUNCTION'/'$OPTIMIZER'/bs_'$BATCH_SIZE'/lr_'$LEARNING_RATE'/' \
         --epochs=1000000 \
         --user_dropout=0.0 \
         --session_dropout=0.1 \
@@ -38,6 +38,7 @@ docker run \
         --momentum=0.5 \
         --loss_function=$LOSS_FUNCTION \
         --optimizer=$OPTIMIZER \
+        --use_user_rnn=False \
         --train_steps=200000
 
 # Attach to logs
