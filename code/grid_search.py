@@ -3,22 +3,22 @@ import json
 import subprocess
 from itertools import product
 
-docker_command = "DATASET_NAME=<DATASET_NAME> && \
-LEARNING_RATE=<LEARNING_RATE> && \
-BATCH_SIZE=<BATCH_SIZE> && \
-LOSS_FUNCTION=<LOSS_FUNCTION> && \
-OPTIMIZER=<OPTIMIZER> && \
-MODEL_VARIANT=<MODEL_VARIANT> && \
+docker_command = "DATASET_NAME=mini_dataset && \
+LEARNING_RATE=0.001 && \
+BATCH_SIZE=50 && \
+LOSS_FUNCTION=cross_entropy && \
+OPTIMIZER=adam && \
+MODEL_NAME=only_session_rnn && \
 \
 docker restart tensorboard && \
-docker pull eu.gcr.io/machinelearning-prod/ma_muy_models:$MODEL_VARIANT && \
+docker pull eu.gcr.io/machinelearning-prod/ma_muy_models:latest && \
 docker run \
     -d \
-    --name=$LOSS_FUNCTION'_'$OPTIMIZER'_bs_'$BATCH_SIZE'_lr_'$LEARNING_RATE \
+    --name=$MODEL_NAME'_'$LOSS_FUNCTION'_'$OPTIMIZER'_bs_'$BATCH_SIZE'_lr_'$LEARNING_RATE \
     --runtime=nvidia \
     --cpus=$(nproc) \
     -v ~/logs:/logs \
-    eu.gcr.io/machinelearning-prod/ma_muy_models:<MODEL_VARIANT> \
+    eu.gcr.io/machinelearning-prod/ma_muy_models:latest \
     python /code/hgru4rec/hgru4rec_trainer.py \
         --train_prefix='gs://ma-muy/03_datasets/'$DATASET_NAME'/05_train/' \
         --eval_prefix='gs://ma-muy/03_datasets/'$DATASET_NAME'/06_eval/' \
@@ -27,7 +27,7 @@ docker run \
         --user_rnn_units=100 \
         --num_products=596 \
         --num_users=1089 \
-        --log_dir='/logs/'$MODEL_VARIANT'/'$DATASET_NAME'/'$LOSS_FUNCTION'/'$OPTIMIZER'/bs_'$BATCH_SIZE'/lr_'$LEARNING_RATE'/' \
+        --log_dir='/logs/'$MODEL_NAME'/'$DATASET_NAME'/'$LOSS_FUNCTION'/'$OPTIMIZER'/bs_'$BATCH_SIZE'/lr_'$LEARNING_RATE'/' \
         --epochs=1000000 \
         --user_dropout=0.0 \
         --session_dropout=0.1 \
@@ -37,7 +37,8 @@ docker run \
         --momentum=0.5 \
         --loss_function=$LOSS_FUNCTION \
         --optimizer=$OPTIMIZER \
-        --train_steps=200000"
+        --use_user_rnn=False \
+        --train_steps=1000000"
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

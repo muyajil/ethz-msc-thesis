@@ -10,16 +10,17 @@ LEARNING_RATE=0.001 && \
 BATCH_SIZE=50 && \
 LOSS_FUNCTION=cross_entropy && \
 OPTIMIZER=adam && \
+MODEL_NAME=only_session_rnn && \
 \
 docker restart tensorboard && \
-docker pull eu.gcr.io/machinelearning-prod/ma_muy_models:combined && \
+docker pull eu.gcr.io/machinelearning-prod/ma_muy_models:latest && \
 docker run \
     -d \
-    --name=$LOSS_FUNCTION'_'$OPTIMIZER'_bs_'$BATCH_SIZE'_lr_'$LEARNING_RATE \
+    --name=$MODEL_NAME'_'$LOSS_FUNCTION'_'$OPTIMIZER'_bs_'$BATCH_SIZE'_lr_'$LEARNING_RATE \
     --runtime=nvidia \
     --cpus=$(nproc) \
     -v ~/logs:/logs \
-    eu.gcr.io/machinelearning-prod/ma_muy_models:combined \
+    eu.gcr.io/machinelearning-prod/ma_muy_models:latest \
     python /code/hgru4rec/hgru4rec_trainer.py \
         --train_prefix='gs://ma-muy/03_datasets/'$DATASET_NAME'/05_train/' \
         --eval_prefix='gs://ma-muy/03_datasets/'$DATASET_NAME'/06_eval/' \
@@ -28,7 +29,7 @@ docker run \
         --user_rnn_units=100 \
         --num_products=596 \
         --num_users=1089 \
-        --log_dir='/logs/only_session_rnn/'$DATASET_NAME'/'$LOSS_FUNCTION'/'$OPTIMIZER'/bs_'$BATCH_SIZE'/lr_'$LEARNING_RATE'/' \
+        --log_dir='/logs/'$MODEL_NAME'/'$DATASET_NAME'/'$LOSS_FUNCTION'/'$OPTIMIZER'/bs_'$BATCH_SIZE'/lr_'$LEARNING_RATE'/' \
         --epochs=1000000 \
         --user_dropout=0.0 \
         --session_dropout=0.1 \
@@ -39,7 +40,7 @@ docker run \
         --loss_function=$LOSS_FUNCTION \
         --optimizer=$OPTIMIZER \
         --use_user_rnn=False \
-        --train_steps=200000
+        --train_steps=1000000
 
 # Attach to logs
 docker logs -f <container_name>
