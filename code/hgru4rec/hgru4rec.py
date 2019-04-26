@@ -320,6 +320,11 @@ def model_fn(features, labels, mode, params):
     tf.summary.histogram('observe/predictions', logits)
     tf.summary.scalar('observe/relevant_session', tf.size(relevant_indices))
 
+    if params['loss_function'] == 'top_1':
+        loss = top_1_loss
+    elif params['loss_function'] == 'cross_entropy':
+        loss = cross_entropy_loss
+
     if mode == tf.estimator.ModeKeys.TRAIN:
 
         tf.summary.scalar(
@@ -355,11 +360,6 @@ def model_fn(features, labels, mode, params):
 
             optimizer = tf.train.GradientDescentOptimizer(
                 learning_rate=params['learning_rate'])
-
-        if params['loss_function'] == 'top_1':
-            loss = top_1_loss
-        elif params['loss_function'] == 'cross_entropy':
-            loss = cross_entropy_loss
 
         grads_and_vars = optimizer.compute_gradients(loss)
 
