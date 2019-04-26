@@ -206,6 +206,10 @@ def model_fn(features, labels, mode, params):
             merged_user_embeddings,
             name='update_user_embeddings'
         )
+    
+    else:
+        # TODO: Here we need to just reset the session hidden states for ended sessions
+        pass
 
     # Compute mask for ending sessions
     relevant_indices = tf.squeeze(
@@ -336,10 +340,10 @@ def model_fn(features, labels, mode, params):
             cross_entropy_loss)
         tf.summary.scalar(
             'train_metrics/precision_at_10',
-            precision_at_10[0])
+            precision_at_10[1])
         tf.summary.scalar(
             'train_metrics/recall_at_10',
-            recall_at_10[0])
+            recall_at_10[1])
 
         if params['optimizer'] == 'adagrad':
 
