@@ -4,7 +4,17 @@ from tensorflow.contrib.cudnn_rnn import CudnnGRU
 from tensorflow.metrics import precision_at_k, recall_at_k
 
 
-def top1_loss(logits, batch_size):
+def top1_loss_mod(logits):
+    logits = tf.tanh(logits)
+    logits = tf.transpose(logits)
+    total_loss = tf.reduce_mean(tf.sigmoid(
+        logits-tf.diag_part(logits))+tf.sigmoid(logits**2), axis=0)
+    answer_loss = tf.sigmoid(tf.diag_part(logits)**2)/tf.cast(tf.shape(logits)[0], tf.float32)
+    loss = tf.reduce_mean(total_loss-answer_loss)
+    return loss
+
+
+def top1_loss(logits):
 
     yhat = tf.nn.softmax(logits)
 
@@ -14,7 +24,9 @@ def top1_loss(logits, batch_size):
         tf.nn.sigmoid(-tf.diag_part(yhat) + yhatT) +
         tf.nn.sigmoid(yhatT**2), axis=0)
 
-    term2 = tf.nn.sigmoid(tf.diag_part(yhat)**2) / batch_size
+    term2 = tf.divide(
+        tf.nn.sigmoid(tf.diag_part(yhat)**2),
+        tf.cast(tf.shape(logits)[0], tf.float32))
     loss = tf.reduce_mean(term1 - term2)
     return loss
 
@@ -41,14 +53,12 @@ def model_fn(features, labels, mode, params):
     session_hidden_states = tf.get_variable(
         'session_hidden_states',
         shape=(batch_size, params['session_rnn_units']),
-        # initializer=tf.zeros_initializer(),
         trainable=False)
 
     # User Embedding, updated by user_rnn
     user_embeddings = tf.get_variable(
         'user_embeddings',
         shape=(params['num_users'], params['user_rnn_units']),
-        # initializer=tf.zeros_initializer(),
         trainable=False)
 
     # Softmax weights to map RNN output to product space
@@ -196,27 +206,12 @@ def model_fn(features, labels, mode, params):
         name='update_user_embeddings'
     )
 
-    # Compute mask for missing users
-    existing_user_indices = tf.squeeze(
-        tf.where(tf.not_equal(features['UserId'], -1)),
-        axis=1)
-
     # Compute mask for ending sessions
-    contiuing_session_indices = tf.squeeze(
+    relevant_indices = tf.squeeze(
         tf.where(
             tf.logical_not(
                 tf.cast(features['LastSessionEvent'], tf.bool))),
         axis=1)
-
-    # Compute relevant indices
-    relevant_indices = tf.squeeze(
-        tf.sparse.to_dense(
-            tf.sets.intersection(
-                existing_user_indices[None, :],
-                contiuing_session_indices[None, :]
-            )
-        ),
-        axis=0)
 
     # Get session hidden states
     relevant_session_hidden_states = tf.gather(
@@ -297,7 +292,7 @@ def model_fn(features, labels, mode, params):
         name='add_softmax_biases')
 
     # Compute TOP1 loss
-    loss = top1_loss(loss_relevant_logits, batch_size.value)
+    top_1_loss = top1_loss_mod(loss_relevant_logits)
 
     # Compute logits for product predictions
     logits = tf.matmul(
@@ -305,13 +300,66 @@ def model_fn(features, labels, mode, params):
         softmax_weights,
         transpose_b=True) + softmax_biases
 
+    cross_entropy_loss = tf.reduce_mean(
+        tf.nn.sparse_softmax_cross_entropy_with_logits(
+            logits=logits,
+            labels=relevant_labels))
+
+    precision_at_10 = precision_at_k(
+        labels=relevant_labels,
+        predictions=logits,
+        k=10,
+        name='compute_precision_at_k')
+
+    recall_at_10 = recall_at_k(
+        labels=relevant_labels,
+        predictions=logits,
+        k=10,
+        name='compute_recall_at_10')
+
     tf.summary.histogram('observe/predictions', logits)
     tf.summary.scalar('observe/relevant_session', tf.size(relevant_indices))
 
     if mode == tf.estimator.ModeKeys.TRAIN:
 
-        optimizer = tf.train.AdagradOptimizer(
-            learning_rate=params['learning_rate'])
+        tf.summary.scalar(
+            'train_metrics/top_1_loss',
+            top_1_loss)
+        tf.summary.scalar(
+            'train_metrics/cross_entropy_loss',
+            cross_entropy_loss)
+        tf.summary.scalar(
+            'train_metrics/precision_at_10',
+            precision_at_10[0])
+        tf.summary.scalar(
+            'train_metrics/recall_at_10',
+            recall_at_10[0])
+
+        if params['optimizer'] == 'adagrad':
+
+            optimizer = tf.train.AdagradOptimizer(
+                learning_rate=params['learning_rate'])
+
+        elif params['optimizer'] == 'momentum':
+
+            optimizer = tf.train.MomentumOptimizer(
+                learning_rate=params['learning_rate'],
+                momentum=params['momentum'])
+
+        elif params['optimizer'] == 'adam':
+
+            optimizer = tf.train.AdamOptimizer(
+                learning_rate=params['learning_rate'])
+
+        elif params['optimizer'] == 'sgd':
+
+            optimizer = tf.train.GradientDescentOptimizer(
+                learning_rate=params['learning_rate'])
+
+        if params['loss_function'] == 'top_1':
+            loss = top_1_loss
+        elif params['loss_function'] == 'cross_entropy':
+            loss = cross_entropy_loss
 
         grads_and_vars = optimizer.compute_gradients(loss)
 
@@ -319,20 +367,20 @@ def model_fn(features, labels, mode, params):
             if grad is not None:
                 if isinstance(grad, tf.IndexedSlices):
                     tf.summary.histogram(
-                        "gradients/{}".format(var.name),
+                        "gradients/{}".format(var.name.replace(':', '_')),
                         grad.values)
                 else:
                     tf.summary.histogram(
-                        "gradients/{}".format(var.name),
+                        "gradients/{}".format(var.name.replace(':', '_')),
                         grad)
 
             if isinstance(var, tf.IndexedSlices):
                 tf.summary.histogram(
-                    "variables/{}".format(var.name),
+                    "variables/{}".format(var.name.replace(':', '_')),
                     var.values)
             else:
                 tf.summary.histogram(
-                    "variables/{}".format(var.name),
+                    "variables/{}".format(var.name.replace(':', '_')),
                     var)
 
         capped_grads_and_vars = [(
@@ -348,18 +396,6 @@ def model_fn(features, labels, mode, params):
         return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op)
 
     if mode == tf.estimator.ModeKeys.EVAL:
-
-        precision_at_10 = precision_at_k(
-            labels=relevant_labels,
-            predictions=logits,
-            k=10,
-            name='compute_precision_at_k')
-
-        recall_at_10 = recall_at_k(
-            labels=relevant_labels,
-            predictions=logits,
-            k=10,
-            name='compute_recall_at_10')
 
         eval_metric_ops = {
             'eval_metrics/precision_at_10': precision_at_10,

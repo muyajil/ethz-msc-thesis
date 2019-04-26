@@ -7,6 +7,7 @@ from dg_ml_core.file import get_paths_with_prefix, file_exists
 from dg_ml_core.collections import dict_ops
 import random
 import argparse
+from dg_ml_core.datastores import gcs_utils
 
 
 class UserParallelMiniBatchDataset(object):
@@ -18,11 +19,16 @@ class UserParallelMiniBatchDataset(object):
 
         self.batch_size = batch_size
         self.sessions_by_user_prefix = sessions_by_user_prefix
+        self.client = gcs_utils.get_client(
+            project_id='machinelearning-prod',
+            service_account_json=None)
 
     def user_iterator(self):
-        paths = get_paths_with_prefix(self.sessions_by_user_prefix)
+        paths = get_paths_with_prefix(
+            self.sessions_by_user_prefix,
+            gcs_client=self.client)
         for path in paths:
-            merged_shard = dict_ops.load_dict(path)
+            merged_shard = dict_ops.load_dict(path, gcs_client=self.client)
             user_ids = list(merged_shard.keys())
             random.shuffle(user_ids)
             for user_id in user_ids:
@@ -78,27 +84,14 @@ class UserParallelMiniBatchDataset(object):
             for idx in active_users:
                 # Catch no more users case
                 if active_users[idx] is None:
-                    # TODO: how to handle no more users?
-                    next_batch[idx] = \
-                        (
-                            -1,
-                            {
-                                'ProductId': -1,
-                                'EmbeddingId': -1,
-                                'UserEmbeddingId': -1,
-                                'SessionChanged': 0,
-                                'LastSessionEvent': 0,
-                                'UserChanged': 0
-                            }
-                        )
-                    continue
+                    break
+
                 # There are still users available
                 else:
                     next_event = self.get_next_event_or_none(active_users[idx])
                     while next_event is None:
                         next_user = self.get_next_user_or_none(users)
                         if next_user is None:
-                            tf.logging.info('There are no more new users')
                             active_users[idx] = None
                             break
                         else:
@@ -108,41 +101,45 @@ class UserParallelMiniBatchDataset(object):
                             if next_event is not None:
                                 next_event['UserChanged'] = 1
 
-                    if 'UserChanged' not in next_event:
-                        next_event['UserChanged'] = 0
+                    if active_users[idx] is None:
+                        break
 
-                    next_batch[idx] = \
-                        (active_users[idx]['UserId'], next_event)
-            if len(set(map(lambda x: str(x), next_batch.values()))) == 1:
-                return
+                    else:
+                        if 'UserChanged' not in next_event:
+                            next_event['UserChanged'] = 0
+
+                        next_batch[idx] = \
+                            (active_users[idx]['UserId'], next_event)
+
+            if None in active_users.values():
+                break
+
             yield list(next_batch.values())
 
     def feature_and_label_generator(self):
         iterator = self.user_parallel_batch_iterator()
         features = next(iterator)
         while True:
-            try:
-                next_features = next(iterator)
-                labels = list(map(
-                    lambda x: (
-                        x[1]['ProductId'],
-                        x[1]['EmbeddingId']),
-                    next_features))
 
-                features = list(map(
-                    lambda x: (
-                        x[0],
-                        x[1]['ProductId'],
-                        x[1]['EmbeddingId'],
-                        x[1]['UserEmbeddingId'],
-                        x[1]['SessionChanged'],
-                        x[1]['LastSessionEvent'],
-                        x[1]['UserChanged']), features))
+            next_features = next(iterator)
+            labels = list(map(
+                lambda x: (
+                    x[1]['ProductId'],
+                    x[1]['EmbeddingId']),
+                next_features))
 
-                yield features, labels
-                features = next_features
-            except StopIteration:
-                return
+            features = list(map(
+                lambda x: (
+                    x[0],
+                    x[1]['ProductId'],
+                    x[1]['EmbeddingId'],
+                    x[1]['UserEmbeddingId'],
+                    x[1]['SessionChanged'],
+                    x[1]['LastSessionEvent'],
+                    x[1]['UserChanged']), features))
+
+            yield features, labels
+            features = next_features
 
 
 def generate_feature_maps(features, labels):
@@ -189,7 +186,7 @@ def input_fn(
             tf.TensorShape((batch_size, 2))))
 
     dataset = dataset.map(generate_feature_maps)
-    dataset.repeat(epochs)
+    dataset = dataset.repeat(epochs)
 
     return dataset
 

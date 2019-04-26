@@ -30,7 +30,10 @@ def main():
     parser.add_argument('--train_steps', type=int)
     parser.add_argument('--epochs', type=int, default=1)
     parser.add_argument('--learning_rate', type=float)
+    parser.add_argument('--momentum', type=float)
     parser.add_argument('--clip_gradients_at', type=float)
+    parser.add_argument('--optimizer', type=str)
+    parser.add_argument('--loss_function', type=str)
 
     args = parser.parse_args()
 
@@ -56,7 +59,8 @@ def main():
         input_fn=lambda: input_fn(
             args.batch_size,
             args.train_prefix,
-            epochs=args.epochs))
+            epochs=args.epochs),
+        max_steps=args.train_steps)
 
     eval_spec = tf.estimator.EvalSpec(
         input_fn=lambda: input_fn(
