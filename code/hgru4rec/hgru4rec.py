@@ -410,6 +410,10 @@ def model_fn(features, labels, mode, params):
 
         grads_and_vars = optimizer.compute_gradients(loss)
 
+        tf.summary.histogram(
+            'variables/session_hidden_states',
+            session_hidden_states)
+
         for grad, var in grads_and_vars:
             if grad is not None:
                 if isinstance(grad, tf.IndexedSlices):
