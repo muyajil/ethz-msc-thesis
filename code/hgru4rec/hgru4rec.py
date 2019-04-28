@@ -4,6 +4,31 @@ from tensorflow.contrib.cudnn_rnn import CudnnGRU
 from tensorflow.metrics import precision_at_k, recall_at_k
 
 
+def mrr_metric(labels, predictions, weights=None,
+               metrics_collections=None,
+               updates_collections=None,
+               name=None):
+
+    with tf.name_scope(name, 'mrr_metric', [predictions, labels, weights]) as scope:
+
+        k = predictions.get_shape().as_list()[-1]
+        _, r = tf.nn.top_k(predictions, k)
+
+        get_ranked_indicies = tf.expand_dims(
+            tf.where(tf.equal(tf.cast(r, tf.int64), labels))[:, 1], 1)
+
+        rr = 1/(get_ranked_indicies+1)
+        m_rr, update_mrr_op = tf.metrics.mean(rr, weights=weights, name=name)
+
+        if metrics_collections:
+            tf.add_to_collection(metrics_collections, m_rr)
+
+        if updates_collections:
+            tf.add_to_collections(updates_collections, update_mrr_op)
+
+        return m_rr, update_mrr_op
+
+
 def top1_loss_mod(logits):
     logits = tf.tanh(logits)
     logits = tf.transpose(logits)
@@ -69,6 +94,7 @@ def model_fn(features, labels, mode, params):
     # Hidden states of session_rnn
     session_hidden_states = tf.get_variable(
         'session_hidden_states',
+        initializer=tf.initializers.random_normal(),
         shape=(batch_size, params['session_rnn_units']),
         trainable=False)
 
@@ -91,6 +117,15 @@ def model_fn(features, labels, mode, params):
         # kernel_initializer=tf.contrib.layers.xavier_initializer(),
         # recurrent_initializer=tf.contrib.layers.xavier_initializer(),
         name='session_rnn')
+
+    # Get session hidden states to update
+    indices_to_update = tf.squeeze(
+        tf.where(
+            tf.cast(features['SessionChanged'], tf.bool),
+            name='get_indices_to_update'
+        ),
+        axis=1
+    )
 
     if params['use_user_rnn']:
         user_rnn = GRU(
@@ -118,15 +153,6 @@ def model_fn(features, labels, mode, params):
 
         # Dropout layer for session initialization
         user2session_dropout = Dropout(params['init_dropout'])
-
-        # Get session hidden states to update
-        indices_to_update = tf.squeeze(
-            tf.where(
-                tf.cast(features['SessionChanged'], tf.bool),
-                name='get_indices_to_update'
-            ),
-            axis=1
-        )
 
         session_states_to_update = tf.gather(
             session_hidden_states,
@@ -157,27 +183,6 @@ def model_fn(features, labels, mode, params):
         new_session_hidden_states = user2session_dropout.apply(
             new_session_hidden_states)
 
-        # Update session hidden states
-        scattered_new_states = tf.scatter_nd(
-            tf.cast(tf.expand_dims(indices_to_update, axis=1), tf.int32),
-            new_session_hidden_states,
-            tf.shape(session_hidden_states)
-        )
-
-        merged_session_hidden_states = tf.where(
-            tf.cast(features['SessionChanged'], tf.bool),
-            scattered_new_states,
-            session_hidden_states)
-
-        session_hidden_states = tf.add(
-            tf.multiply(
-                session_hidden_states,
-                tf.zeros_like(session_hidden_states)
-            ),
-            merged_session_hidden_states,
-            name='update_session_hidden_states'
-        )
-
         # Update user embeddings
         scattered_new_embeddings = tf.scatter_nd(
             tf.cast(tf.expand_dims(
@@ -206,10 +211,34 @@ def model_fn(features, labels, mode, params):
             merged_user_embeddings,
             name='update_user_embeddings'
         )
-    
+
+        # Update session hidden states
+        scattered_new_states = tf.scatter_nd(
+            tf.cast(tf.expand_dims(indices_to_update, axis=1), tf.int32),
+            new_session_hidden_states,
+            tf.shape(session_hidden_states)
+        )
+
+        merged_session_hidden_states = tf.where(
+            tf.cast(features['SessionChanged'], tf.bool),
+            scattered_new_states,
+            session_hidden_states)
+
     else:
-        # TODO: Here we need to just reset the session hidden states for ended sessions
+        merged_session_hidden_states = tf.where(
+            tf.cast(features['SessionChanged'], tf.bool),
+            tf.random.normal(tf.shape(session_hidden_states)),
+            session_hidden_states)
         pass
+
+    session_hidden_states = tf.add(
+        tf.multiply(
+            session_hidden_states,
+            tf.zeros_like(session_hidden_states)
+        ),
+        merged_session_hidden_states,
+        name='update_session_hidden_states'
+    )
 
     # Compute mask for ending sessions
     relevant_indices = tf.squeeze(
@@ -322,6 +351,11 @@ def model_fn(features, labels, mode, params):
         k=10,
         name='compute_recall_at_10')
 
+    mrr = mrr_metric(
+        labels=relevant_labels,
+        predictions=logits,
+        name='compute_mrr')
+
     tf.summary.histogram('observe/predictions', logits)
     tf.summary.scalar('observe/relevant_session', tf.size(relevant_indices))
 
@@ -335,15 +369,23 @@ def model_fn(features, labels, mode, params):
         tf.summary.scalar(
             'train_metrics/top_1_loss',
             top_1_loss)
+
         tf.summary.scalar(
             'train_metrics/cross_entropy_loss',
             cross_entropy_loss)
+
         tf.summary.scalar(
             'train_metrics/precision_at_10',
             precision_at_10[1])
+
         tf.summary.scalar(
             'train_metrics/recall_at_10',
             recall_at_10[1])
+
+        tf.summary.scalar(
+            'train_metrics/mrr',
+            mrr[1]
+        )
 
         if params['optimizer'] == 'adagrad':
 
@@ -405,6 +447,7 @@ def model_fn(features, labels, mode, params):
         eval_metric_ops = {
             'eval_metrics/precision_at_10': precision_at_10,
             'eval_metrics/recall_at_10': recall_at_10,
+            'eval_metrics/mrr': mrr
         }
 
         return tf.estimator.EstimatorSpec(

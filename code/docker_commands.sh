@@ -10,7 +10,7 @@ LEARNING_RATE=0.001 && \
 BATCH_SIZE=50 && \
 LOSS_FUNCTION=top_1 && \
 OPTIMIZER=adam && \
-MODEL_NAME=only_session_rnn && \
+MODEL_NAME=only_session_rnn_large && \
 \
 docker restart tensorboard && \
 docker pull eu.gcr.io/machinelearning-prod/ma_muy_models:latest && \
@@ -25,7 +25,7 @@ docker run \
         --train_prefix='gs://ma-muy/03_datasets/'$DATASET_NAME'/05_train/' \
         --eval_prefix='gs://ma-muy/03_datasets/'$DATASET_NAME'/06_eval/' \
         --batch_size=$BATCH_SIZE \
-        --session_rnn_units=100 \
+        --session_rnn_units=500 \
         --user_rnn_units=100 \
         --num_products=596 \
         --num_users=1089 \
