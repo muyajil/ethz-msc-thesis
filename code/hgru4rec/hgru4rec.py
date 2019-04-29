@@ -98,15 +98,16 @@ def model_fn(features, labels, mode, params):
     )
 
     inc_op_rel_session = num_rel_sessions.assign_add(
-        batch_size - tf.reduce_sum(features['LastSessionEvent'])
-    )
+        tf.subtract(
+            tf.cast(batch_size, tf.int64),
+            tf.reduce_sum(features['LastSessionEvent'])))
 
     tf.summary.scalar('observe/num_ended_sessions', num_ended_sessions)
 
-    tf.summary.scalar('observe/num_ended_users', num_ended_users)
+    tf.summary.scalar('observe/num_ended_users', num_ended_users)f
 
     tf.summary.scalar(
-        'observe/avg_rel_sessions',
+        'observe/avg_relevant_sessions',
         num_rel_sessions/tf.train.get_or_create_global_step())
 
     # Hidden states of session_rnn
@@ -382,7 +383,6 @@ def model_fn(features, labels, mode, params):
     tf.summary.histogram('observe/labels', relevant_labels)
     tf.summary.histogram('observe/logits', logits)
     tf.summary.histogram('observe/predictions', predictions)
-    tf.summary.scalar('observe/relevant_session', tf.size(relevant_indices))
 
     if params['loss_function'] == 'top_1':
         loss = top_1_loss
