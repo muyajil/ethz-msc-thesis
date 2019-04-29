@@ -82,21 +82,19 @@ def model_fn(features, labels, mode, params):
         dtype=tf.int64)
 
     # Update stats
-    num_ended_sessions = tf.assign(
-        num_ended_sessions,
-        tf.add(
-            tf.reduce_sum(features['SessionChanged']),
-            num_ended_sessions))
+    inc_op_session = num_ended_sessions.assign_add(
+        tf.reduce_sum(features['SessionChanged'])
+    )
 
-    num_ended_users = tf.assign(
-        num_ended_users,
-        tf.add(
-            tf.reduce_sum(features['UserChanged']),
-            num_ended_users))
+    inc_op_user = num_ended_users.assign_add(
+        tf.reduce_sum(features['UserChanged'])
+    )
 
-    tf.summary.scalar('observe/num_ended_sessions', num_ended_sessions)
+    with tf.control_dependencies([inc_op_session, inc_op_user]):
 
-    tf.summary.scalar('observe/num_ended_users', num_ended_users)
+        tf.summary.scalar('observe/num_ended_sessions', num_ended_sessions)
+
+        tf.summary.scalar('observe/num_ended_users', num_ended_users)
 
     # Hidden states of session_rnn
     session_hidden_states = tf.get_variable(
