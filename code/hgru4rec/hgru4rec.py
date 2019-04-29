@@ -467,8 +467,8 @@ def model_fn(features, labels, mode, params):
             eval_metric_ops=eval_metric_ops)
 
     if mode == tf.estimator.ModeKeys.PREDICT:
-        predictions = tf.nn.top_k(
-            softmax_predictions,
+        _, predictions = tf.nn.top_k(
+            logits,
             params['num_predictions'])
 
         return tf.estimator.EstimatorSpec(mode, predictions=predictions)

@@ -5,18 +5,18 @@ docker run --restart always -d -v ~/logs:/logs -p 6006:6006 eu.gcr.io/machinelea
 docker run --restart always -d -v ~/ethz-msc-thesis:/ethz-msc-thesis -p 8888:8888 eu.gcr.io/machinelearning-prod/ma_muy_jupyter:latest
 
 # Run model
-DATASET_NAME=mini_dataset && \
+DATASET_NAME=midi_dataset && \
 LEARNING_RATE=0.001 && \
 BATCH_SIZE=50 && \
 LOSS_FUNCTION=top_1 && \
 OPTIMIZER=adam && \
-MODEL_NAME=only_session_rnn_large && \
+MODEL_NAME=with_user_rnn && \
 \
 docker restart tensorboard && \
 docker pull eu.gcr.io/machinelearning-prod/ma_muy_models:latest && \
 docker run \
     -d \
-    --name=$MODEL_NAME'_'$LOSS_FUNCTION'_'$OPTIMIZER'_bs_'$BATCH_SIZE'_lr_'$LEARNING_RATE \
+    --name=$MODEL_NAME'_'$DATASET_NAME'_'$LOSS_FUNCTION'_'$OPTIMIZER'_bs_'$BATCH_SIZE'_lr_'$LEARNING_RATE \
     --runtime=nvidia \
     --cpus=$(nproc) \
     -v ~/logs:/logs \
@@ -25,12 +25,12 @@ docker run \
         --train_prefix='gs://ma-muy/03_datasets/'$DATASET_NAME'/05_train/' \
         --eval_prefix='gs://ma-muy/03_datasets/'$DATASET_NAME'/06_eval/' \
         --batch_size=$BATCH_SIZE \
-        --session_rnn_units=500 \
+        --session_rnn_units=100 \
         --user_rnn_units=100 \
-        --num_products=596 \
-        --num_users=1089 \
+        --num_products=47859 \
+        --num_users=13395 \
         --log_dir='/logs/'$MODEL_NAME'/'$DATASET_NAME'/'$LOSS_FUNCTION'/'$OPTIMIZER'/bs_'$BATCH_SIZE'/lr_'$LEARNING_RATE'/' \
-        --epochs=1000000 \
+        --epochs=10 \
         --user_dropout=0.0 \
         --session_dropout=0.1 \
         --init_dropout=0.0 \
@@ -40,7 +40,8 @@ docker run \
         --loss_function=$LOSS_FUNCTION \
         --optimizer=$OPTIMIZER \
         --use_user_rnn=False \
-        --train_steps=100000
+        --min_train_steps=100000
+        --train_steps=200000
 
 # Attach to logs
 docker logs -f <container_name>

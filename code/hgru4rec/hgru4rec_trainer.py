@@ -1,8 +1,12 @@
-from hgru4rec import model_fn
+from hgru4rec import model_fn, mrr_metric
 from user_par_mini_batch import input_fn
 import tensorflow as tf
 import argparse
 import os
+
+
+def mrr(predictions, features, labels, config):
+    return {'mrr': mrr_metric(labels, predictions)}
 
 
 def main():
@@ -28,6 +32,7 @@ def main():
     parser.add_argument('--use_user_rnn', type=bool)
 
     # Model run parameters
+    parser.add_argument('--min_train_steps', type=int)
     parser.add_argument('--train_steps', type=int)
     parser.add_argument('--epochs', type=int, default=1)
     parser.add_argument('--learning_rate', type=float)
@@ -53,6 +58,18 @@ def main():
         params=vars(args),
         config=trainingConfig)
 
+    model_instance = tf.contrib.estimator.add_metrics(
+        estimator=model_instance,
+        metric_fn=mrr
+    )
+
+    early_stopping_hook = tf.contrib.estimator.stop_if_no_increase_hook(
+        estimator=model_instance,
+        metric_name='mrr',
+        max_steps_without_increase=50000,
+        min_steps=args.min_train_steps
+    )
+
     # model_instance.train(
     #     input_fn=lambda: input_fn(
     #         args.batch_size,
@@ -67,7 +84,8 @@ def main():
             args.batch_size,
             args.train_prefix,
             epochs=args.epochs),
-        max_steps=args.train_steps)
+        max_steps=args.train_steps,
+        hooks=[early_stopping_hook])
 
     eval_spec = tf.estimator.EvalSpec(
         input_fn=lambda: input_fn(
