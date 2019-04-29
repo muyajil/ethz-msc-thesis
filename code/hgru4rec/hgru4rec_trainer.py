@@ -31,7 +31,7 @@ def main():
     parser.add_argument('--min_train_steps', type=int)
     parser.add_argument('--eval_every_steps', type=int)
     parser.add_argument('--train_steps', type=int)
-    parser.add_argument('--epochs', type=int, default=1)
+    parser.add_argument('--epochs', type=int)
     parser.add_argument('--learning_rate', type=float)
     parser.add_argument('--momentum', type=float)
     parser.add_argument('--clip_gradients_at', type=float)
