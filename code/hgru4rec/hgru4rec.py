@@ -340,6 +340,8 @@ def model_fn(features, labels, mode, params):
         softmax_weights,
         transpose_b=True) + softmax_biases
 
+    _, predictions = tf.nn.top_k(logits, params['num_products'])
+
     cross_entropy_loss = tf.reduce_mean(
         tf.nn.sparse_softmax_cross_entropy_with_logits(
             logits=logits,
@@ -363,7 +365,8 @@ def model_fn(features, labels, mode, params):
         name='compute_mrr')
 
     tf.summary.histogram('observe/labels', relevant_labels)
-    tf.summary.histogram('observe/predictions', logits)
+    tf.summary.histogram('observe/logits', logits)
+    tf.summary.histogram('observe/predictions', predictions)
     tf.summary.scalar('observe/relevant_session', tf.size(relevant_indices))
 
     if params['loss_function'] == 'top_1':
@@ -467,4 +470,4 @@ def model_fn(features, labels, mode, params):
             eval_metric_ops=eval_metric_ops)
 
     if mode == tf.estimator.ModeKeys.PREDICT:
-        return tf.estimator.EstimatorSpec(mode, predictions=logits)
+        return tf.estimator.EstimatorSpec(mode, predictions=predictions)
