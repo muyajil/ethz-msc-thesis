@@ -41,11 +41,17 @@ def main():
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
 
+    config = tf.ConfigProto(
+        gpu_options=tf.GPUOptions(
+            allow_growth=True))
+
+    trainingConfig = tf.estimator.RunConfig(session_config=config)
+
     model_instance = tf.estimator.Estimator(
         model_fn=model_fn,
         model_dir=args.log_dir,
-        params=vars(args)
-    )
+        params=vars(args),
+        config=trainingConfig)
 
     # model_instance.train(
     #     input_fn=lambda: input_fn(
