@@ -4,21 +4,28 @@ from tensorflow.contrib.cudnn_rnn import CudnnGRU
 from tensorflow.metrics import precision_at_k, recall_at_k
 
 
-def mrr_metric(labels, predictions, weights=None,
+def mrr_metric(labels, predictions, k=None, weights=None,
                metrics_collections=None,
                updates_collections=None,
                name=None):
 
     with tf.name_scope(name, 'mrr_metric', [predictions, labels, weights]) as scope:
 
-        k = predictions.get_shape().as_list()[-1]
-        _, r = tf.nn.top_k(predictions, k)
+        if k is None:
+            k = predictions.get_shape().as_list()[-1]
+        _, pred_embedding_ids = tf.nn.top_k(predictions, k)
+        labels = tf.broadcast_to(
+            tf.expand_dims(labels, 1), 
+            tf.shape(pred_embedding_ids))
 
-        get_ranked_indicies = tf.expand_dims(
-            tf.where(tf.equal(tf.cast(r, tf.int64), labels))[:, 1], 1)
+        ranked_indices = tf.where(
+            tf.equal(tf.cast(pred_embedding_ids, tf.int64), labels))[:, 1]
 
-        rr = 1/(get_ranked_indicies+1)
-        m_rr, update_mrr_op = tf.metrics.mean(rr, weights=weights, name=name)
+        inverse_rank = 1/(ranked_indices + 1)
+        m_rr, update_mrr_op = tf.metrics.mean(
+            inverse_rank,
+            weights=weights,
+            name=name)
 
         if metrics_collections:
             tf.add_to_collection(metrics_collections, m_rr)
@@ -229,7 +236,6 @@ def model_fn(features, labels, mode, params):
             tf.cast(features['SessionChanged'], tf.bool),
             tf.random.normal(tf.shape(session_hidden_states)),
             session_hidden_states)
-        pass
 
     session_hidden_states = tf.add(
         tf.multiply(
@@ -356,6 +362,7 @@ def model_fn(features, labels, mode, params):
         predictions=logits,
         name='compute_mrr')
 
+    tf.summary.histogram('observe/labels', relevant_labels)
     tf.summary.histogram('observe/predictions', logits)
     tf.summary.scalar('observe/relevant_session', tf.size(relevant_indices))
 
