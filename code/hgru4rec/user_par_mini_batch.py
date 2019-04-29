@@ -172,7 +172,7 @@ def generate_feature_maps(features, labels):
 def input_fn(
         batch_size,
         sessions_by_user_prefix,
-        epochs=1):
+        epochs=None):
 
     dataset_wrapper = UserParallelMiniBatchDataset(
         batch_size,
