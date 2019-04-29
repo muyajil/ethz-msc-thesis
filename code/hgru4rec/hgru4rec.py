@@ -81,6 +81,13 @@ def model_fn(features, labels, mode, params):
         trainable=False,
         dtype=tf.int64)
 
+    num_rel_sessions = tf.get_variable(
+        'num_rel_sessions',
+        shape=(),
+        initializer=tf.zeros_initializer(),
+        trainable=False,
+        dtype=tf.int64)
+
     # Update stats
     inc_op_session = num_ended_sessions.assign_add(
         tf.reduce_sum(features['SessionChanged'])
@@ -90,9 +97,17 @@ def model_fn(features, labels, mode, params):
         tf.reduce_sum(features['UserChanged'])
     )
 
+    inc_op_rel_session = num_rel_sessions.assign_add(
+        batch_size - tf.reduce_sum(features['LastSessionEvent'])
+    )
+
     tf.summary.scalar('observe/num_ended_sessions', num_ended_sessions)
 
     tf.summary.scalar('observe/num_ended_users', num_ended_users)
+
+    tf.summary.scalar(
+        'observe/avg_rel_sessions',
+        num_rel_sessions/tf.train.get_or_create_global_step())
 
     # Hidden states of session_rnn
     session_hidden_states = tf.get_variable(
@@ -244,7 +259,8 @@ def model_fn(features, labels, mode, params):
 
     with tf.control_dependencies([
             inc_op_session,
-            inc_op_user]):
+            inc_op_user,
+            inc_op_rel_session]):
         # Compute mask for ending sessions
         relevant_indices = tf.squeeze(
             tf.where(
