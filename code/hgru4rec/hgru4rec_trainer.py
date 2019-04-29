@@ -77,7 +77,8 @@ def main():
     eval_spec = tf.estimator.EvalSpec(
         input_fn=lambda: input_fn(
             args.batch_size,
-            args.eval_prefix),
+            args.eval_prefix,
+            epochs=1),
         steps=None,
         throttle_secs=0,
         start_delay_secs=0)
