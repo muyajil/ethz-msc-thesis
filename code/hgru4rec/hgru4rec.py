@@ -15,7 +15,7 @@ def mrr_metric(labels, predictions, k=None, weights=None,
             k = predictions.get_shape().as_list()[-1]
         _, pred_embedding_ids = tf.nn.top_k(predictions, k)
         labels = tf.broadcast_to(
-            tf.expand_dims(labels, 1), 
+            tf.expand_dims(labels, 1),
             tf.shape(pred_embedding_ids))
 
         ranked_indices = tf.where(
@@ -467,8 +467,4 @@ def model_fn(features, labels, mode, params):
             eval_metric_ops=eval_metric_ops)
 
     if mode == tf.estimator.ModeKeys.PREDICT:
-        _, predictions = tf.nn.top_k(
-            logits,
-            params['num_predictions'])
-
-        return tf.estimator.EstimatorSpec(mode, predictions=predictions)
+        return tf.estimator.EstimatorSpec(mode, predictions=logits)

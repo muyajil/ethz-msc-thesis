@@ -5,10 +5,6 @@ import argparse
 import os
 
 
-def mrr(predictions, features, labels, config):
-    return {'mrr': mrr_metric(labels, predictions)}
-
-
 def main():
     parser = argparse.ArgumentParser(description='Run hgru4rec')
 
@@ -33,6 +29,7 @@ def main():
 
     # Model run parameters
     parser.add_argument('--min_train_steps', type=int)
+    parser.add_argument('--eval_every_steps', type=int)
     parser.add_argument('--train_steps', type=int)
     parser.add_argument('--epochs', type=int, default=1)
     parser.add_argument('--learning_rate', type=float)
@@ -50,7 +47,9 @@ def main():
         gpu_options=tf.GPUOptions(
             allow_growth=True))
 
-    trainingConfig = tf.estimator.RunConfig(session_config=config)
+    trainingConfig = tf.estimator.RunConfig(
+        session_config=config,
+        save_checkpoints_steps=args.eval_every_steps)
 
     model_instance = tf.estimator.Estimator(
         model_fn=model_fn,
@@ -58,26 +57,14 @@ def main():
         params=vars(args),
         config=trainingConfig)
 
-    model_instance = tf.contrib.estimator.add_metrics(
-        estimator=model_instance,
-        metric_fn=mrr
-    )
-
     early_stopping_hook = tf.contrib.estimator.stop_if_no_increase_hook(
         estimator=model_instance,
-        metric_name='mrr',
+        metric_name='eval_metrics/mrr',
         max_steps_without_increase=50000,
+        run_every_steps=args.eval_every_steps,
+        run_every_secs=None,
         min_steps=args.min_train_steps
     )
-
-    # model_instance.train(
-    #     input_fn=lambda: input_fn(
-    #         args.batch_size,
-    #         args.train_prefix,
-    #         epochs=args.epochs
-    #     ),
-    #     steps=args.train_steps
-    # )
 
     train_spec = tf.estimator.TrainSpec(
         input_fn=lambda: input_fn(
@@ -90,7 +77,10 @@ def main():
     eval_spec = tf.estimator.EvalSpec(
         input_fn=lambda: input_fn(
             args.batch_size,
-            args.eval_prefix))
+            args.eval_prefix),
+        steps=None,
+        throttle_secs=0,
+        start_delay_secs=0)
 
     tf.estimator.train_and_evaluate(
         estimator=model_instance,
