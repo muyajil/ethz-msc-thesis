@@ -25,7 +25,10 @@ def main():
     parser.add_argument('--user_dropout', type=float)
     parser.add_argument('--session_dropout', type=float)
     parser.add_argument('--init_dropout', type=float)
-    parser.add_argument('--use_user_rnn', type=bool)
+    parser.add_argument(
+        '--use_user_rnn',
+        default=False,
+        action='store_true')
 
     # Model run parameters
     parser.add_argument('--num_predictions', type=int)
