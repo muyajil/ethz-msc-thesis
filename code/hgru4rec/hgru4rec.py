@@ -104,7 +104,7 @@ def model_fn(features, labels, mode, params):
 
     tf.summary.scalar('observe/num_ended_sessions', num_ended_sessions)
 
-    tf.summary.scalar('observe/num_ended_users', num_ended_users)f
+    tf.summary.scalar('observe/num_ended_users', num_ended_users)
 
     tf.summary.scalar(
         'observe/avg_relevant_sessions',
