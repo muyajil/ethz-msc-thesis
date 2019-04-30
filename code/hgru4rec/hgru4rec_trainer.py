@@ -28,6 +28,7 @@ def main():
     parser.add_argument('--use_user_rnn', type=bool)
 
     # Model run parameters
+    parser.add_argument('--num_predictions', type=int)
     parser.add_argument('--min_train_steps', type=int)
     parser.add_argument('--eval_every_steps', type=int)
     parser.add_argument('--train_steps', type=int)
