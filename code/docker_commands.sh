@@ -10,9 +10,8 @@ LEARNING_RATE=0.001 && \
 BATCH_SIZE=50 && \
 LOSS_FUNCTION=top_1 && \
 OPTIMIZER=adam && \
-MODEL_NAME=with_user_rnn && \
+MODEL_NAME=only_session_medium && \
 \
-docker restart tensorboard && \
 docker pull eu.gcr.io/machinelearning-prod/ma_muy_models:latest && \
 docker run \
     -d \
@@ -24,13 +23,13 @@ docker run \
     python /code/hgru4rec/hgru4rec_trainer.py \
         --train_prefix='gs://ma-muy/03_datasets/'$DATASET_NAME'/05_train/' \
         --eval_prefix='gs://ma-muy/03_datasets/'$DATASET_NAME'/06_eval/' \
+        --num_predictions=10 \
         --batch_size=$BATCH_SIZE \
-        --session_rnn_units=100 \
-        --user_rnn_units=100 \
+        --session_rnn_units=250 \
+        --user_rnn_units=250 \
         --num_products=47859 \
         --num_users=13395 \
         --log_dir='/logs/'$MODEL_NAME'/'$DATASET_NAME'/'$LOSS_FUNCTION'/'$OPTIMIZER'/bs_'$BATCH_SIZE'/lr_'$LEARNING_RATE'/' \
-        --epochs=10 \
         --user_dropout=0.0 \
         --session_dropout=0.1 \
         --init_dropout=0.0 \
@@ -40,8 +39,13 @@ docker run \
         --loss_function=$LOSS_FUNCTION \
         --optimizer=$OPTIMIZER \
         --use_user_rnn=False \
-        --min_train_steps=100000
+        --min_train_steps=100000 \
+        --eval_every_steps=20000 \
+
+
+        --epochs=10 \
         --train_steps=200000
 
 # Attach to logs
 docker logs -f <container_name>
+

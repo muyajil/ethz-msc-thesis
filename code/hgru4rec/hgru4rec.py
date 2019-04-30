@@ -356,7 +356,8 @@ def model_fn(features, labels, mode, params):
         softmax_weights,
         transpose_b=True) + softmax_biases
 
-    _, predictions = tf.nn.top_k(logits, params['num_products'])
+    _, ranked_predictions = tf.nn.top_k(logits, params['num_predictions'])
+    top_predictions = ranked_predictions[:, 0]
 
     cross_entropy_loss = tf.reduce_mean(
         tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -382,7 +383,7 @@ def model_fn(features, labels, mode, params):
 
     tf.summary.histogram('observe/labels', relevant_labels)
     tf.summary.histogram('observe/logits', logits)
-    tf.summary.histogram('observe/predictions', predictions)
+    tf.summary.histogram('observe/top_predictions', top_predictions)
 
     if params['loss_function'] == 'top_1':
         loss = top_1_loss
