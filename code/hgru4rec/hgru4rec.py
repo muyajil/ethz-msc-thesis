@@ -486,4 +486,4 @@ def model_fn(features, labels, mode, params):
             eval_metric_ops=eval_metric_ops)
 
     if mode == tf.estimator.ModeKeys.PREDICT:
-        return tf.estimator.EstimatorSpec(mode, predictions=predictions)
+        return tf.estimator.EstimatorSpec(mode, predictions=ranked_predictions)
