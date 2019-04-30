@@ -434,8 +434,7 @@ def model_fn(features, labels, mode, params):
             optimizer = tf.train.GradientDescentOptimizer(
                 learning_rate=params['learning_rate'])
 
-        with tf.control_dependencies([top_predictions]):
-            grads_and_vars = optimizer.compute_gradients(loss)
+        grads_and_vars = optimizer.compute_gradients(loss)
 
         tf.summary.histogram(
             'variables/session_hidden_states',
