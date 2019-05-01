@@ -13,3 +13,4 @@ writeup/build/*
 *.dvi
 artifacts/*
 *.pyc
+*.hdf
