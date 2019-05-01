@@ -21,6 +21,7 @@ RUN pip3 install --no-cache-dir \
     google-cloud-logging \
     google-cloud-datastore \
     google-cloud-bigquery \
+    tables \
     jupyterlab
 
 RUN pip3 install https://storage.googleapis.com/dg-ml-packages/dg_ml_core.tar.gz

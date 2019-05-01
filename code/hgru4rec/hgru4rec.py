@@ -147,6 +147,7 @@ def model_fn(features, labels, mode, params):
     )
 
     if params['use_user_rnn']:
+        tf.logging.info('Adding user_rnn')
         user_rnn = GRU(
             # params['user_rnn_layers'],
             params['user_rnn_units'],
