@@ -64,7 +64,7 @@ def main():
     early_stopping_hook = tf.contrib.estimator.stop_if_no_increase_hook(
         estimator=model_instance,
         metric_name='eval_metrics/mrr',
-        max_steps_without_increase=100000,
+        max_steps_without_increase=40000,
         run_every_steps=args.eval_every_steps,
         run_every_secs=None,
         min_steps=args.min_train_steps

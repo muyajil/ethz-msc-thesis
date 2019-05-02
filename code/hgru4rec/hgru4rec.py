@@ -111,11 +111,15 @@ def model_fn(features, labels, mode, params):
         num_rel_sessions/tf.train.get_or_create_global_step())
 
     # Hidden states of session_rnn
-    session_hidden_states = tf.get_variable(
+    session_hidden_states_var = tf.get_variable(
         'session_hidden_states',
         initializer=tf.initializers.random_normal(),
         shape=(batch_size, params['session_rnn_units']),
         trainable=False)
+
+    tf.summary.histogram(
+            'variables/session_hidden_states',
+            session_hidden_states_var)
 
     # Softmax weights to map RNN output to product space
     softmax_weights = tf.get_variable(
@@ -159,10 +163,14 @@ def model_fn(features, labels, mode, params):
             name='user_rnn')
 
         # User Embedding, updated by user_rnn
-        user_embeddings = tf.get_variable(
+        user_embeddings_var = tf.get_variable(
             'user_embeddings',
             shape=(params['num_users'], params['user_rnn_units']),
             trainable=False)
+
+        tf.summary.histogram(
+            'variables/user_embeddings',
+            user_embeddings_var)
 
         # Layer to predict new session initialization
         user2session_layer = Dense(
@@ -175,7 +183,7 @@ def model_fn(features, labels, mode, params):
         user2session_dropout = Dropout(params['init_dropout'])
 
         session_states_to_update = tf.gather(
-            session_hidden_states,
+            session_hidden_states_var,
             indices_to_update,
             name='get_session_states_to_update'
         )
@@ -187,7 +195,7 @@ def model_fn(features, labels, mode, params):
         )
 
         user_embeddings_to_update = tf.nn.embedding_lookup(
-            user_embeddings,
+            user_embeddings_var,
             user_embedding_ids_to_update
         )
 
@@ -208,7 +216,7 @@ def model_fn(features, labels, mode, params):
             tf.cast(tf.expand_dims(
                 user_embedding_ids_to_update, axis=1), tf.int32),
             new_user_embeddings,
-            tf.shape(user_embeddings)
+            tf.shape(user_embeddings_var)
         )
 
         scattered_mask = tf.scatter_nd(
@@ -221,43 +229,47 @@ def model_fn(features, labels, mode, params):
         merged_user_embeddings = tf.where(
             tf.cast(scattered_mask, tf.bool),
             scattered_new_embeddings,
-            user_embeddings)
+            user_embeddings_var)
 
-        user_embeddings = tf.add(
-            tf.multiply(
-                user_embeddings,
-                tf.zeros_like(user_embeddings)
-            ),
+        usr_assign_op = tf.assign(
+            user_embeddings_var,
             merged_user_embeddings,
-            name='update_user_embeddings'
+            name='assign_user_embeddings'
         )
+
+        with tf.control_dependencies([usr_assign_op]):
+            user_embeddings = tf.identity(
+                merged_user_embeddings,
+                name='update_user_embeddings')
 
         # Update session hidden states
         scattered_new_states = tf.scatter_nd(
             tf.cast(tf.expand_dims(indices_to_update, axis=1), tf.int32),
             new_session_hidden_states,
-            tf.shape(session_hidden_states)
+            tf.shape(session_hidden_states_var)
         )
 
         merged_session_hidden_states = tf.where(
             tf.cast(features['SessionChanged'], tf.bool),
             scattered_new_states,
-            session_hidden_states)
+            session_hidden_states_var)
 
     else:
         merged_session_hidden_states = tf.where(
             tf.cast(features['SessionChanged'], tf.bool),
-            tf.random.normal(tf.shape(session_hidden_states)),
-            session_hidden_states)
+            tf.random.normal(tf.shape(session_hidden_states_var)),
+            session_hidden_states_var)
 
-    session_hidden_states = tf.add(
-        tf.multiply(
-            session_hidden_states,
-            tf.zeros_like(session_hidden_states)
-        ),
-        merged_session_hidden_states,
-        name='update_session_hidden_states'
-    )
+    sess_assign_op = tf.assign(
+            session_hidden_states_var,
+            merged_session_hidden_states,
+            name='assign_session_hidden_states'
+        )
+
+    with tf.control_dependencies([sess_assign_op]):
+        session_hidden_states = tf.identity(
+            merged_session_hidden_states,
+            name='update_session_hidden_states')
 
     with tf.control_dependencies([
             inc_op_session,
@@ -436,10 +448,6 @@ def model_fn(features, labels, mode, params):
                 learning_rate=params['learning_rate'])
 
         grads_and_vars = optimizer.compute_gradients(loss)
-
-        tf.summary.histogram(
-            'variables/session_hidden_states',
-            session_hidden_states)
 
         for grad, var in grads_and_vars:
             if grad is not None:
