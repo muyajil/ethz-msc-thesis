@@ -34,6 +34,7 @@ def main():
     parser.add_argument('--num_predictions', type=int)
     parser.add_argument('--min_train_steps', type=int)
     parser.add_argument('--eval_every_steps', type=int)
+    parser.add_argument('--max_steps_without_increase', type=int)
     parser.add_argument('--train_steps', type=int)
     parser.add_argument('--epochs', type=int)
     parser.add_argument('--learning_rate', type=float)
@@ -64,7 +65,7 @@ def main():
     early_stopping_hook = tf.contrib.estimator.stop_if_no_increase_hook(
         estimator=model_instance,
         metric_name='eval_metrics/mrr',
-        max_steps_without_increase=40000,
+        max_steps_without_increase=args.max_steps_without_increase,
         run_every_steps=args.eval_every_steps,
         run_every_secs=None,
         min_steps=args.min_train_steps

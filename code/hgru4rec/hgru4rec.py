@@ -137,8 +137,8 @@ def model_fn(features, labels, mode, params):
         return_state=True,
         implementation=2,
         dropout=params['session_dropout'],
-        # kernel_initializer=tf.contrib.layers.xavier_initializer(),
-        # recurrent_initializer=tf.contrib.layers.xavier_initializer(),
+        kernel_initializer=tf.contrib.layers.xavier_initializer(),
+        recurrent_initializer=tf.contrib.layers.xavier_initializer(),
         name='session_rnn')
 
     # Get session hidden states to update
@@ -158,13 +158,14 @@ def model_fn(features, labels, mode, params):
             return_state=True,
             implementation=2,
             dropout=params['user_dropout'],
-            # kernel_initializer=tf.contrib.layers.xavier_initializer(),
-            # recurrent_initializer=tf.contrib.layers.xavier_initializer(),
+            kernel_initializer=tf.contrib.layers.xavier_initializer(),
+            recurrent_initializer=tf.contrib.layers.xavier_initializer(),
             name='user_rnn')
 
         # User Embedding, updated by user_rnn
         user_embeddings_var = tf.get_variable(
             'user_embeddings',
+            initializer=tf.initializers.random_normal(),
             shape=(params['num_users'], params['user_rnn_units']),
             trainable=False)
 
@@ -238,21 +239,18 @@ def model_fn(features, labels, mode, params):
         )
 
         with tf.control_dependencies([usr_assign_op]):
-            user_embeddings = tf.identity(
-                merged_user_embeddings,
-                name='update_user_embeddings')
 
-        # Update session hidden states
-        scattered_new_states = tf.scatter_nd(
-            tf.cast(tf.expand_dims(indices_to_update, axis=1), tf.int32),
-            new_session_hidden_states,
-            tf.shape(session_hidden_states_var)
-        )
+            # Update session hidden states
+            scattered_new_states = tf.scatter_nd(
+                tf.cast(tf.expand_dims(indices_to_update, axis=1), tf.int32),
+                new_session_hidden_states,
+                tf.shape(session_hidden_states_var)
+            )
 
-        merged_session_hidden_states = tf.where(
-            tf.cast(features['SessionChanged'], tf.bool),
-            scattered_new_states,
-            session_hidden_states_var)
+            merged_session_hidden_states = tf.where(
+                tf.cast(features['SessionChanged'], tf.bool),
+                scattered_new_states,
+                session_hidden_states_var)
 
     else:
         merged_session_hidden_states = tf.where(
@@ -323,20 +321,19 @@ def model_fn(features, labels, mode, params):
         session_hidden_states
     )
 
-    session_hidden_states = tf.add(
-        tf.multiply(
-            session_hidden_states,
-            tf.zeros_like(session_hidden_states)
-        ),
-        merged_session_hidden_states,
-        name='update_session_hidden_states_sess'
-    )
+    sess_assign_op_sess = tf.assign(
+            session_hidden_states_var,
+            merged_session_hidden_states,
+            name='assign_session_hidden_states_sess'
+        )
 
-    # Extract relevant labels
-    relevant_labels = tf.gather(
-        labels['EmbeddingId'],
-        relevant_indices
-    )
+    with tf.control_dependencies([sess_assign_op_sess]):
+
+        # Extract relevant labels
+        relevant_labels = tf.gather(
+            labels['EmbeddingId'],
+            relevant_indices
+        )
 
     # Get softmax weights for relevant labels
     samples_softmax_weights = tf.nn.embedding_lookup(
@@ -449,6 +446,12 @@ def model_fn(features, labels, mode, params):
 
         grads_and_vars = optimizer.compute_gradients(loss)
 
+        grads_and_vars = [(
+            tf.clip_by_norm(
+                grad,
+                params['clip_gradients_at']),
+            var) for grad, var in grads_and_vars]
+
         for grad, var in grads_and_vars:
             if grad is not None:
                 if isinstance(grad, tf.IndexedSlices):
@@ -469,14 +472,8 @@ def model_fn(features, labels, mode, params):
                     "variables/{}".format(var.name.replace(':', '_')),
                     var)
 
-        capped_grads_and_vars = [(
-            tf.clip_by_norm(
-                grad,
-                params['clip_gradients_at']),
-            var) for grad, var in grads_and_vars]
-
         train_op = optimizer.apply_gradients(
-            capped_grads_and_vars,
+            grads_and_vars,
             global_step=tf.train.get_or_create_global_step())
 
         return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op)
