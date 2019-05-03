@@ -27,6 +27,7 @@ class UserParallelMiniBatchDataset(object):
         paths = get_paths_with_prefix(
             self.sessions_by_user_prefix,
             gcs_client=self.client)
+        random.shuffle(paths)
         for path in paths:
             merged_shard = dict_ops.load_dict(path, gcs_client=self.client)
             user_ids = list(merged_shard.keys())
