@@ -110,6 +110,8 @@ def model_fn(features, labels, mode, params):
         'observe/avg_relevant_sessions',
         num_rel_sessions/tf.train.get_or_create_global_step())
 
+    tf.summary.scalar('observe/epochs', features['Epoch'][0])
+
     # Hidden states of session_rnn
     session_hidden_states_var = tf.get_variable(
         'session_hidden_states',

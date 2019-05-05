@@ -22,6 +22,7 @@ class UserParallelMiniBatchDataset(object):
         self.client = gcs_utils.get_client(
             project_id='machinelearning-prod',
             service_account_json=None)
+        self.epoch = 0
 
     def user_iterator(self):
         paths = get_paths_with_prefix(
@@ -137,10 +138,13 @@ class UserParallelMiniBatchDataset(object):
                     x[1]['UserEmbeddingId'],
                     x[1]['SessionChanged'],
                     x[1]['LastSessionEvent'],
-                    x[1]['UserChanged']), features))
+                    x[1]['UserChanged'],
+                    self.epoch), features))
 
             yield features, labels
             features = next_features
+
+        self.epoch += 1
 
 
 def generate_feature_maps(features, labels):
@@ -152,7 +156,8 @@ def generate_feature_maps(features, labels):
             'UserEmbeddingId': x[3],
             'SessionChanged': x[4],
             'LastSessionEvent': x[5],
-            'UserChanged': x[6]},
+            'UserChanged': x[6],
+            'Epoch': x[7]},
         features,
         dtype={
             'UserId': tf.int64,
@@ -161,7 +166,8 @@ def generate_feature_maps(features, labels):
             'UserEmbeddingId': tf.int64,
             'SessionChanged': tf.int64,
             'LastSessionEvent': tf.int64,
-            'UserChanged': tf.int64})
+            'UserChanged': tf.int64,
+            'Epoch': tf.int64})
 
     labels = tf.map_fn(
         lambda x: {'ProductId': x[0], 'EmbeddingId': x[1]},
@@ -183,7 +189,7 @@ def input_fn(
         dataset_wrapper.feature_and_label_generator,
         output_types=(tf.int64, tf.int64),
         output_shapes=(
-            tf.TensorShape((batch_size, 7)),
+            tf.TensorShape((batch_size, 8)),
             tf.TensorShape((batch_size, 2))))
 
     dataset = dataset.map(generate_feature_maps)
