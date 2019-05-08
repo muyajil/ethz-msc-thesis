@@ -2,30 +2,67 @@
 
 \section{Recommendation Systems}
 \subsection{Problem Statement}
+\begin{itemize}
+    \item The general form of a recommendation system is that we assign scores to items.
+    \item A personalized recommendation system uses the context of the user to produce scores dependant of the active user.
+    \item Write out a function that describes a general recommendation system
+\end{itemize}
 \subsection{Variants}
+\begin{itemize}
+    \item User Based
+    \item Item Based
+    \item Session Based
+\end{itemize}
 \subsection{Well-Known Systems}
 \begin{itemize}
-\item Specify the Problem of Recommendation as a scoring problem on items
-\item Describe possile bases for recommendation (User Based, Item Based, Session Based)
-\item Describe most popular existing solutions (Collaborative Filtering, Wide and Deep Learning)
+    \item Describe a classical user based approach
+    \item Describe a classical item based approach
 \end{itemize}
 
-\section{Concepts/Models/...}
+\section{Concepts}
 \subsection{Recurrent Neural Networks}
+\begin{itemize}
+    \item Explain the concept of neural Networks
+    \item What are the problems (vanishing gradients etc)
+    \item Explain what a GRU is and why does it handle vanishing gradient better than simple RNN cells?
+    \item How does a layered RNN work?
+\end{itemize}
 \subsection{Generative Adversarial Network Framework}
-\subsection{Hierarchical RNNs for personalized Recommendations}
-\cite{hierarchical}
+\begin{itemize}
+    \item Explain the way GANs work
+    \item Loss function is learnable
+    \item The discriminator is part of the loss function
+    \item Especially good if we want generate stuff
+\end{itemize}
+\subsection{Teacher Forcing}
+\begin{itemize}
+    \item RNN have two modes: Teacher forced and Free running
+    \item When training we always use the ground truth as input
+    \item This generates two different distributions of hidden states, which in turn generates two different distributions for the output
+    \item This is a problem since this makes RNNs in production less predictable
+\end{itemize}
+
+\section{Previous Work}
 \subsection{Professor Forcing}
+\begin{itemize}
+    \item Here we want to mitigate the teacher forcing problem, by applying the gan framework
+    \item Add graphic showing how it should work
+    \item Describe the model as we did in the slides, show the loss function
+\end{itemize}
 \cite{profforce}
 \subsection{Meta-Prod2Vec}
-\cite{prod2vec}
 \begin{itemize}
-\item Describe RNNs
-\item Describe Hiearchical RNNs
-\item Describe the GAN Framework
-\item Describe Professor Forcing as an application of the GAN Framework to RNNs
-\item Describe Meta-Prod2Vec as an embedding framework and where we would use it inside our model
+    \item This is a model that allows us to capture the semantic similarity between products
+    \item Explain how it works by relating to word2vec (refer to word2vec paper)
 \end{itemize}
+\cite{prod2vec}
+\subsection{Hierarchical RNNs for personalized Recommendations}
+\begin{itemize}
+    \item This is the starting point for the thesis
+    \item Which components does the system have?
+    \item Show the graphic from the paper
+\end{itemize}
+\cite{hierarchical}
 
 \section{KPIs}
 \subsection{Click-Through-Rate}
