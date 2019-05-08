@@ -22,7 +22,7 @@ class UserParallelMiniBatchDataset(object):
         self.client = gcs_utils.get_client(
             project_id='machinelearning-prod',
             service_account_json=None)
-        self.epoch = 0
+        self.epoch = -1
 
     def user_iterator(self):
         paths = get_paths_with_prefix(
@@ -74,6 +74,7 @@ class UserParallelMiniBatchDataset(object):
 
     def user_parallel_batch_iterator(self):
 
+        self.epoch += 1
         active_users = dict()
         users = self.user_iterator()
 
@@ -143,8 +144,6 @@ class UserParallelMiniBatchDataset(object):
 
             yield features, labels
             features = next_features
-
-        self.epoch += 1
 
 
 def generate_feature_maps(features, labels):
