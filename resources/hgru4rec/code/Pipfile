@@ -4,6 +4,7 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+pep8 = "*"
 
 [packages]
 certifi = "*"
@@ -17,6 +18,7 @@ six = "*"
 tables = "*"
 Theano = "*"
 pylint = "*"
+pep8 = "*"
 
 [requires]
 python_version = "3.6"

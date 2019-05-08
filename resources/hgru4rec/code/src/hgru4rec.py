@@ -89,6 +89,7 @@ class HGRU4Rec:
              item_embedding=None, init_item_embeddings=None,
              user_hidden_bias_mode='init', user_output_bias=False,
              user_to_session_act='tanh', seed=42)
+             
     Initializes the network.
 
     Parameters
@@ -773,8 +774,13 @@ class HGRU4Rec:
         self.predict = None
         self.update = None
         self.error_during_train = False
+        # if valid_data is not None:
+        #     itemids = np.concatenate([train_data[self.item_key].unique(), valid_data[self.item_key].unique()])
+        # else:
+        #     itemids = train_data[self.item_key].unique()
         itemids = train_data[self.item_key].unique()
         self.n_items = len(itemids)
+        logger.info('Number of Items: {}'.format(self.n_items))
         self.init()  # initialize the network
         if load_from:
             logger.info('Resuming from state: {}'.format(load_from))
@@ -782,17 +788,17 @@ class HGRU4Rec:
 
         if not retrain:
             self.itemidmap = pd.Series(data=np.arange(self.n_items), index=itemids)
-            train_data = pd.merge(train_data,
-                                  pd.DataFrame({self.item_key: itemids, 'ItemIdx': self.itemidmap[itemids].values}),
-                                  on=self.item_key, how='inner')
+            # train_data = pd.merge(train_data,
+            #                       pd.DataFrame({self.item_key: itemids, 'ItemIdx': self.itemidmap[itemids].values}),
+            #                       on=self.item_key, how='inner')
             user_indptr, offset_sessions = self.preprocess_data(train_data)
         else:
             raise Exception('Not supported yet!')
 
         if valid_data is not None:
-            valid_data = pd.merge(valid_data,
-                                  pd.DataFrame({self.item_key: itemids, 'ItemIdx': self.itemidmap[itemids].values}),
-                                  on=self.item_key, how='inner')
+            # valid_data = pd.merge(valid_data,
+            #                       pd.DataFrame({self.item_key: itemids, 'ItemIdx': self.itemidmap[itemids].values}),
+            #                       on=self.item_key, how='inner')
             user_indptr_valid, offset_sessions_valid = self.preprocess_data(valid_data)
 
         X, Y = T.ivectors(2)
@@ -894,7 +900,7 @@ class HGRU4Rec:
                 self.Hu[i].set_value(np.zeros((self.batch_size, self.user_layers[i]), dtype=theano.config.floatX),
                                      borrow=True)
         # variables to manage iterations over users
-        n_users = len(user_indptr)
+        n_users = len(user_indptr) # TODO: this value and for the products must be set differently
         offset_users = offset_sessions[user_indptr]
         user_idx_arr = np.arange(n_users - 1)
         user_iters = np.arange(self.batch_size)
@@ -914,10 +920,10 @@ class HGRU4Rec:
         c = []
         while not finished:
             session_minlen = (session_end - session_start).min()
-            out_idx = data.ItemIdx.values[session_start]
+            out_idx = data.ItemId.values[session_start]
             for i in range(session_minlen - 1):
                 in_idx = out_idx
-                out_idx = data.ItemIdx.values[session_start + i + 1]
+                out_idx = data.ItemId.values[session_start + i + 1]
                 if self.n_sample:
                     sample = self.neg_sampler.next_sample()
                     y = np.hstack([out_idx, sample])
@@ -1022,11 +1028,14 @@ class HGRU4Rec:
         user_change = input_user_ids != self.current_users
         self.current_users = input_user_ids.copy()
 
-        in_idxs = self.itemidmap[input_item_ids]
+        # in_idxs = self.itemidmap[input_item_ids]
+        in_idxs = input_item_ids
         if predict_for_item_ids is not None:
-            iIdxs = self.itemidmap[predict_for_item_ids]
+            # iIdxs = self.itemidmap[predict_for_item_ids]
+            iIdxs = predict_for_item_ids
             preds = np.asarray(self.predict(in_idxs, session_change, user_change, iIdxs)).T
             return pd.DataFrame(data=preds, index=predict_for_item_ids)
         else:
             preds = np.asarray(self.predict(in_idxs, session_change, user_change)).T
-            return pd.DataFrame(data=preds, index=self.itemidmap.index)
+            # return pd.DataFrame(data=preds, index=self.itemidmap.index)
+            return pd.DataFrame(data=preds)

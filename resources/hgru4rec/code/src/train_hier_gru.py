@@ -14,8 +14,8 @@ logging.basicConfig(
     format="%(asctime)s: %(name)s: %(levelname)s: %(message)s")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('dataset', type=str)
-parser.add_argument('split', type=str)
+# parser.add_argument('dataset', type=str)
+# parser.add_argument('split', type=str)
 parser.add_argument('session_layers', type=str)
 parser.add_argument('user_layers', type=str)
 parser.add_argument('--loss', type=str, default='cross-entropy')
@@ -62,42 +62,12 @@ parser.add_argument('--user_to_output', type=int, default=1)
 
 args = parser.parse_args()
 
-data_home = '../data'
-if args.dataset == 'xing':
-    prefix = 'xing'
-elif args.dataset == 'xing-dense':
-    prefix = 'xing/dense'
-elif args.dataset == 'xing-full':
-    prefix = 'xing/full'
-elif args.dataset == 'xing-dense-sample':
-    prefix = 'xing_sample/dense-sample'
-else:
-    raise RuntimeError('Unknown dataset: {}'.format(args.dataset))
+sessions_path = 'data/dg/last-session-out/sessions.hdf'
+train_key = 'train'
+test_key = 'eval'
 
-# Last-session-out partitioning
-if args.split == 'lso-test':
-    ext = 'last-session-out/sessions.hdf'
-    train_key = 'train'
-    test_key = 'test'
-elif args.split == 'lso-valid':
-    ext = 'last-session-out/sessions.hdf'
-    train_key = 'valid_train'
-    test_key = 'valid_test'
-# Last-days-out partitioning
-elif args.split == 'ldo-test':
-    ext = 'last-days-out/sessions.hdf'
-    train_key = 'train'
-    test_key = 'test'
-elif args.split == 'ldo-valid':
-    ext = 'last-days-out/sessions.hdf'
-    train_key = 'valid_train'
-    test_key = 'valid_test'
-else:
-    raise RuntimeError('Unknown split: {}'.format(args.split))
-
-sessions_path = path.join(data_home, prefix, ext)
 logger.info('Loading data from: {}'.format(sessions_path))
-logger.info('Split: {}'.format(args.split))
+# logger.info('Split: {}'.format(args.split))
 train_data = pd.read_hdf(sessions_path, train_key)
 test_data = pd.read_hdf(sessions_path, test_key)
 
