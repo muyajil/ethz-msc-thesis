@@ -31,8 +31,8 @@ RUN pip3 install https://storage.googleapis.com/dg-ml-packages/dg_ml_processing.
 
 RUN jupyter notebook --generate-config
 
-RUN mkdir /ethz-msc-thesis
+RUN mkdir /notebook-dir
 
 EXPOSE 8888
 
-ENTRYPOINT ["jupyter-lab", "--ip", "0.0.0.0", "--no-browser", "--allow-root", "--notebook-dir", "/ethz-msc-thesis"]
+ENTRYPOINT ["jupyter-lab", "--ip", "0.0.0.0", "--no-browser", "--allow-root", "--notebook-dir", "/notebook-dir"]
