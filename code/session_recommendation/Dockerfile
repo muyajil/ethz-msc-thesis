@@ -9,8 +9,7 @@ RUN pip install --upgrade pip
 RUN pip install --no-cache-dir \
                 flask \
                 gunicorn \
-                tensorflow \
-                
+                tensorflow
 
 ADD . /app
 ENTRYPOINT ["gunicorn", "--preload", "--chdir", "/app", "--bind", "0.0.0.0:5000", "wsgi:app"]
