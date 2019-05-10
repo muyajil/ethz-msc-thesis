@@ -41,7 +41,8 @@ def top1_loss_mod(logits):
     logits = tf.transpose(logits)
     total_loss = tf.reduce_mean(tf.sigmoid(
         logits-tf.diag_part(logits))+tf.sigmoid(logits**2), axis=0)
-    answer_loss = tf.sigmoid(tf.diag_part(logits)**2)/tf.cast(tf.shape(logits)[0], tf.float32)
+    answer_loss = tf.sigmoid(tf.diag_part(logits)**2) / \
+        tf.cast(tf.shape(logits)[0], tf.float32)
     loss = tf.reduce_mean(total_loss-answer_loss)
     return loss
 
