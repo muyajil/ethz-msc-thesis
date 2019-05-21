@@ -14,3 +14,4 @@ writeup/build/*
 artifacts/*
 *.pyc
 *.hdf
+!config.json

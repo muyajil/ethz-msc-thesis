@@ -1,15 +1,9 @@
 from session_recommendation.main import app, initialize_app
-import argparse
+import json
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--model_name', type=str)
-    parser.add_argument('--model_path', type=str)
-    parser.add_argument('--embedding_dict_path', type=str)
-    parser.add_argument('--params_path', type=str)
+    config = json.load(open('/config.json'))
 
     app.run()
 
-    args = parser.parse_args()
-    initialize_app(args.model_name, args.model_path, args.embedding_dict_path, args.params_path)
+    initialize_app(config['model_name'], config['model_path'], config['embedding_dict_path'], config['params_path'])
