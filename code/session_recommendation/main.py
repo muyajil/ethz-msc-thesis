@@ -5,6 +5,8 @@ import tensorflow as tf
 from dg_ml_core.datastores import gcs_utils
 from dg_ml_core.collections import dict_ops
 import argparse
+import logging
+logging.basicConfig(level=logging.INFO)
 
 
 app = Flask('SessionBasedRecommendations')
@@ -47,6 +49,7 @@ def initialize_app(model_name, model_path, embedding_dict_path, params_path):
 
 @app.route('/predict/', methods=['POST'])
 def predict():
+    logging.info('Started prediction')
     if request.headers["Content-Type"] == 'application/json':
         request_data = request.get_json()
         user_id = request_data['userId']
@@ -81,6 +84,8 @@ def predict():
             predictions = MODEL.predict(features)
 
             product_ids = map(lambda x: EMBEDDING_DICT['Prodct']['FromEmbedding'][str(x)], predictions)
+
+            logging.info('Recommended {} to {}'.format(','.join(product_ids), user_id))
 
             return (jsonify({
                 'predictions': list(product_ids)
