@@ -76,7 +76,7 @@ def predict():
             features['SessionChanged'] = int(session_start)
             features['UserChanged'] = 0
             features['Epoch'] = 0
-            features['LastSessionEvent'] = 1
+            features['LastSessionEvent'] = 0
 
             predictions = MODEL.predict(features)
 

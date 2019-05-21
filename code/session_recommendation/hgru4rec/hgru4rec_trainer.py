@@ -3,6 +3,7 @@ from user_par_mini_batch import input_fn
 import tensorflow as tf
 import argparse
 import os
+import json
 
 
 def main():
@@ -61,6 +62,8 @@ def main():
         model_dir=args.log_dir,
         params=vars(args),
         config=trainingConfig)
+
+    json.dump(vars(args), open(args.log_dir + 'params.json'))
 
     early_stopping_hook = tf.contrib.estimator.stop_if_no_increase_hook(
         estimator=model_instance,
