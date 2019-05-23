@@ -63,7 +63,7 @@ def main():
         params=vars(args),
         config=trainingConfig)
 
-    json.dump(vars(args), open(args.log_dir + 'params.json'))
+    json.dump(vars(args), open(args.log_dir + 'params.json', 'w'))
 
     early_stopping_hook = tf.contrib.estimator.stop_if_no_increase_hook(
         estimator=model_instance,
