@@ -27,13 +27,13 @@ def home():
     return jsonify({"message": "Session Recommendation App is live"}), 200
 
 
-def initialize_app(model_name, model_path, embedding_dict_path, params_path):
+def initialize_app(model_name, model_path, embedding_dict_path):
     global READY
     global MODEL
     global EMBEDDING_DICT
 
     EMBEDDING_DICT = dict_ops.load_dict(embedding_dict_path)
-    params = dict_ops.load_dict(params_path)
+    params = dict_ops.load_dict(model_path + 'params.json')
 
     gcs_utils.download_folder_to_target(model_path, '/model_data')
 

@@ -6,4 +6,4 @@ if __name__ == "__main__":
 
     app.run()
 
-    initialize_app(config['model_name'], config['model_path'], config['embedding_dict_path'], config['params_path'])
+    initialize_app(config['model_name'], config['model_path'], config['embedding_dict_path'])
