@@ -11,7 +11,7 @@ def mrr_at_k(labels, logits, k, name=None):
             tf.shape(pred_embedding_ids))
 
         ranked_indices = tf.where(
-            tf.equal(tf.cast(pred_embedding_ids, tf.int64), labels))[:, 0]
+            tf.equal(tf.cast(pred_embedding_ids, tf.int64), labels))[:, 1]
 
         inverse_rank = 1/(ranked_indices + 1)
 
