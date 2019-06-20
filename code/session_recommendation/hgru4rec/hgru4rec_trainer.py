@@ -1,5 +1,5 @@
-from hgru4rec import model_fn, mrr_metric
-from user_par_mini_batch import input_fn
+from hgru4rec import HGRU4Rec
+from user_par_mini_batch import UserParallelMiniBatchDataset
 import tensorflow as tf
 import argparse
 import os
@@ -37,7 +37,7 @@ def main():
     parser.add_argument('--eval_every_steps', type=int)
     parser.add_argument('--max_steps_without_increase', type=int)
     parser.add_argument('--train_steps', type=int)
-    parser.add_argument('--epochs', type=int)
+    parser.add_argument('--epochs', type=int, default=1)
     parser.add_argument('--learning_rate', type=float)
     parser.add_argument('--momentum', type=float)
     parser.add_argument('--clip_gradients_at', type=float)
@@ -49,56 +49,22 @@ def main():
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
 
-    config = tf.ConfigProto(
-        gpu_options=tf.GPUOptions(
-            allow_growth=True))
-
-    trainingConfig = tf.estimator.RunConfig(
-        session_config=config,
-        save_checkpoints_steps=args.eval_every_steps)
-
-    model_instance = tf.estimator.Estimator(
-        model_fn=model_fn,
-        model_dir=args.log_dir,
-        params=vars(args),
-        config=trainingConfig)
-
+    params = vars(args)
     json.dump(vars(args), open(args.log_dir + 'params.json', 'w'))
 
-    early_stopping_hook = tf.contrib.estimator.stop_if_no_increase_hook(
-        estimator=model_instance,
-        metric_name='eval_metrics/mrr',
-        max_steps_without_increase=args.max_steps_without_increase,
-        run_every_steps=args.eval_every_steps,
-        run_every_secs=None,
-        min_steps=args.min_train_steps
-    )
+    model_instance = HGRU4Rec(params)
+    model_instance.logger.info('Started execution of trainer!')
+    model_instance.setup_model()
 
-    train_spec = tf.estimator.TrainSpec(
-        input_fn=lambda: input_fn(
-            args.batch_size,
-            args.train_prefix,
-            epochs=args.epochs),
-        max_steps=args.train_steps,
-        hooks=[early_stopping_hook])
+    dataset = UserParallelMiniBatchDataset(
+        args.batch_size,
+        args.train_prefix)
 
-    eval_spec = tf.estimator.EvalSpec(
-        input_fn=lambda: input_fn(
-            args.batch_size,
-            args.eval_prefix,
-            epochs=1),
-        steps=None,
-        throttle_secs=0,
-        start_delay_secs=0)
+    model_instance.train(dataset)
 
-    tf.estimator.train_and_evaluate(
-        estimator=model_instance,
-        train_spec=train_spec,
-        eval_spec=eval_spec
-    )
+    json.dump(model_instance.user_embeddings, open(args.log_dir + 'user_embeddings.json', 'w'))
+    json.dump(model_instance.session_embeddings, open(args.log_dir + 'session_embeddings.json', 'w'))
+    model_instance.logger.info('Finished execution of trainer!')
 
 if __name__ == "__main__":
-    tf.logging.set_verbosity(tf.logging.INFO)
-    tf.logging.info('Started execution of trainer!')
     main()
-    tf.logging.info('Finished execution of trainer!')

@@ -6,13 +6,20 @@ from dg_ml_core.datastores import gcs_utils
 from dg_ml_core.collections import dict_ops
 import argparse
 import logging
-logging.basicConfig(level=logging.INFO)
+import os
+import numpy as np
 
 
 app = Flask('SessionBasedRecommendations')
 READY = False
 MODEL = None
 EMBEDDING_DICT = dict()
+
+
+if __name__ != '__main__':
+    gunicorn_logger = logging.getLogger('gunicorn.error')
+    app.logger.handlers = gunicorn_logger.handlers
+    app.logger.setLevel(gunicorn_logger.level)
 
 
 @app.route('/Readiness/', methods=['GET'])
@@ -32,9 +39,12 @@ def initialize_app(model_name, model_path, embedding_dict_path):
     global MODEL
     global EMBEDDING_DICT
 
+    app.logger.info('Loading embedding dict...')
     EMBEDDING_DICT = dict_ops.load_dict(embedding_dict_path)
+    app.logger.info('Loading model params...')
     params = dict_ops.load_dict(model_path + 'params.json')
 
+    app.logger.info('Downloading model artifacts...')
     gcs_utils.download_folder_to_target(model_path, '/model_data')
 
     if model_name == 'hgru4rec':
@@ -44,12 +54,14 @@ def initialize_app(model_name, model_path, embedding_dict_path):
             params=params)
     else:
         raise RuntimeError(f'Model {model_name} unknown')
+    
+    app.logger.info('Finished initialization!')
     READY = True
 
 
 @app.route('/predict/', methods=['POST'])
 def predict():
-    logging.info('Started prediction')
+    app.logger.info('Started prediction')
     if request.headers["Content-Type"] == 'application/json':
         request_data = request.get_json()
         user_id = request_data['userId']
@@ -72,20 +84,20 @@ def predict():
             
         else:
             features = dict()
-            features['UserId'] = [user_id]
-            features['UserEmbeddingId'] = [EMBEDDING_DICT['User']['ToEmbedding'][str(user_id)]]
-            features['ProductId'] = product_id
-            features['EmbeddingId'] = [EMBEDDING_DICT['Product']['ToEmbedding'][str(product_id)]]
-            features['SessionChanged'] = int(session_start)
-            features['UserChanged'] = 0
-            features['Epoch'] = 0
-            features['LastSessionEvent'] = 0
+            features['UserId'] = np.array([user_id])
+            features['UserEmbeddingId'] = np.array([EMBEDDING_DICT['User']['ToEmbedding'][str(user_id)]])
+            features['ProductId'] = np.array([product_id])
+            features['EmbeddingId'] = np.array([EMBEDDING_DICT['Product']['ToEmbedding'][str(product_id)]])
+            features['SessionChanged'] = np.array([int(session_start)])
+            features['UserChanged'] = np.array([0])
+            features['Epoch'] = np.array([0])
+            features['LastSessionEvent'] = np.array([0])
 
-            predictions = MODEL.predict(features)
+            predictions = MODEL.predict(lambda: features)
 
-            product_ids = map(lambda x: EMBEDDING_DICT['Prodct']['FromEmbedding'][str(x)], predictions)
+            product_ids = map(lambda x: EMBEDDING_DICT['Product']['FromEmbedding'][str(x)], list(predictions))
 
-            logging.info('Recommended {} to {}'.format(','.join(product_ids), user_id))
+            app.logger.info('Recommended {} to {}'.format(','.join(product_ids), user_id))
 
             return (jsonify({
                 'predictions': list(product_ids)
@@ -98,13 +110,13 @@ def predict():
                 "message": "Invalid input format"
             }}), 400)
 
+initialize_app(os.environ['MODEL_NAME'], os.environ['MODEL_PATH'], os.environ['EMBEDDING_DICT_PATH'])
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_name', type=str)
     parser.add_argument('--model_path', type=str)
     parser.add_argument('--embedding_dict_path', type=str)
-    parser.add_argument('--params_path', type=str)
 
     args = parser.parse_args()
 

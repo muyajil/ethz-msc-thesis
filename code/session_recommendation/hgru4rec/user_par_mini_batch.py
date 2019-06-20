@@ -8,6 +8,7 @@ from dg_ml_core.collections import dict_ops
 import random
 import argparse
 from dg_ml_core.datastores import gcs_utils
+import pandas as pd
 
 
 class UserParallelMiniBatchDataset(object):
@@ -22,7 +23,6 @@ class UserParallelMiniBatchDataset(object):
         self.client = gcs_utils.get_client(
             project_id='machinelearning-prod',
             service_account_json=None)
-        self.epoch = -1
 
     def user_iterator(self):
         paths = get_paths_with_prefix(
@@ -37,13 +37,12 @@ class UserParallelMiniBatchDataset(object):
                 yield user_id, merged_shard[user_id]
 
     def event_iterator(self, user_sessions):
-        sorted_sessions = sorted(
-            map(lambda x: user_sessions[x], user_sessions.keys()),
-            key=lambda y: y['StartTime'])
-        for sorted_session in sorted_sessions:
+        sorted_session_ids = sorted(user_sessions.keys(),
+                                    key=lambda y: user_sessions[y]['StartTime'])
+        for session_id in sorted_session_ids:
 
             sorted_events = sorted(
-                sorted_session['Events'], key=lambda z: z['Timestamp'])
+                user_sessions[session_id]['Events'], key=lambda z: z['Timestamp'])
             for idx, event in enumerate(sorted_events):
                 if idx == 0:
                     event['SessionChanged'] = 1
@@ -54,6 +53,8 @@ class UserParallelMiniBatchDataset(object):
                     event['LastSessionEvent'] = 1
                 else:
                     event['LastSessionEvent'] = 0
+
+                event['SessionId'] = int(session_id)
                 yield event
 
     def get_next_event_or_none(self, active_user):
@@ -74,7 +75,6 @@ class UserParallelMiniBatchDataset(object):
 
     def user_parallel_batch_iterator(self):
 
-        self.epoch += 1
         active_users = dict()
         users = self.user_iterator()
 
@@ -110,91 +110,25 @@ class UserParallelMiniBatchDataset(object):
                     else:
                         if 'UserChanged' not in next_event:
                             next_event['UserChanged'] = 0
-
-                        next_batch[idx] = \
-                            (active_users[idx]['UserId'], next_event)
+                        next_event['UserId'] = active_users[idx]['UserId']
+                        next_batch[idx] = next_event
 
             if None in active_users.values():
                 break
 
-            yield list(next_batch.values())
+            yield pd.DataFrame(list(next_batch.values()))
 
     def feature_and_label_generator(self):
         iterator = self.user_parallel_batch_iterator()
+
         features = next(iterator)
         while True:
-
             next_features = next(iterator)
-            labels = list(map(
-                lambda x: (
-                    x[1]['ProductId'],
-                    x[1]['EmbeddingId']),
-                next_features))
 
-            features = list(map(
-                lambda x: (
-                    x[0],
-                    x[1]['ProductId'],
-                    x[1]['EmbeddingId'],
-                    x[1]['UserEmbeddingId'],
-                    x[1]['SessionChanged'],
-                    x[1]['LastSessionEvent'],
-                    x[1]['UserChanged'],
-                    self.epoch), features))
+            features['LabelEmbeddingId'] = next_features['EmbeddingId']
 
-            yield features, labels
+            yield features
             features = next_features
-
-
-def generate_feature_maps(features, labels):
-    features = tf.map_fn(
-        lambda x: {
-            'UserId': x[0],
-            'ProductId': x[1],
-            'EmbeddingId': x[2],
-            'UserEmbeddingId': x[3],
-            'SessionChanged': x[4],
-            'LastSessionEvent': x[5],
-            'UserChanged': x[6],
-            'Epoch': x[7]},
-        features,
-        dtype={
-            'UserId': tf.int64,
-            'ProductId': tf.int64,
-            'EmbeddingId': tf.int64,
-            'UserEmbeddingId': tf.int64,
-            'SessionChanged': tf.int64,
-            'LastSessionEvent': tf.int64,
-            'UserChanged': tf.int64,
-            'Epoch': tf.int64})
-
-    labels = tf.map_fn(
-        lambda x: {'ProductId': x[0], 'EmbeddingId': x[1]},
-        labels,
-        dtype={'ProductId': tf.int64, 'EmbeddingId': tf.int64})
-    return features, labels
-
-
-def input_fn(
-        batch_size,
-        sessions_by_user_prefix,
-        epochs=None):
-
-    dataset_wrapper = UserParallelMiniBatchDataset(
-        batch_size,
-        sessions_by_user_prefix)
-
-    dataset = tf.data.Dataset.from_generator(
-        dataset_wrapper.feature_and_label_generator,
-        output_types=(tf.int64, tf.int64),
-        output_shapes=(
-            tf.TensorShape((batch_size, 8)),
-            tf.TensorShape((batch_size, 2))))
-
-    dataset = dataset.map(generate_feature_maps)
-    dataset = dataset.repeat(epochs)
-
-    return dataset
 
 
 def main():
@@ -209,17 +143,17 @@ def main():
 
     args = parser.parse_args()
 
-    dataset = input_fn(
-        args.batch_size,
-        args.sessions_by_user_prefix)
+    # dataset = input_fn(
+    #     args.batch_size,
+    #     args.sessions_by_user_prefix)
 
-    print('Datapoint:')
+    # print('Datapoint:')
 
-    for datapoint in dataset:
-        print(datapoint[0])
-        print(datapoint[0]['UserId'].shape[0])
-        print(datapoint[1])
-        break
+    # for datapoint in dataset:
+    #     print(datapoint[0])
+    #     print(datapoint[0]['UserId'].shape[0])
+    #     print(datapoint[1])
+    #     break
 
 
 if __name__ == "__main__":

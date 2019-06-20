@@ -17,6 +17,7 @@ ipykernel = "*"
 rope = "*"
 flask = "*"
 gunicorn = "*"
+pandas = "*"
 
 [requires]
 python_version = "3.6"
