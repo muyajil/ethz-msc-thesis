@@ -308,7 +308,7 @@ class HGRU4Rec(object):
         (self._ops.metrics.mrr_at_10,
          self._ops.metrics.mrr_update_op) = mrr_at_k(
             labels=self._ops.labels,
-            predictions=self._ops.logits,
+            logits=self._ops.logits,
             k=10,
             name='compute_mrr')
 
