@@ -436,6 +436,10 @@ class HGRU4Rec(object):
         elif self._config['optimizer'] == 'sgd':
             optimizer = tf.train.GradientDescentOptimizer(
                 learning_rate=self._config['learning_rate'])
+        elif self._config['optimizer'] == 'momentum':
+            optimizer = tf.train.MomentumOptimizer(
+                learning_rate=self._config['learning_rate'],
+                momentum=self._config['momentum'])
 
         self._ops.grads_and_vars = [(
             tf.clip_by_norm(
