@@ -427,8 +427,12 @@ class HGRU4Rec(object):
         elif self._config['loss_function'] == 'cross_entropy':
             loss = self._ops.losses.cross_entropy_loss
 
-        optimizer = tf.train.AdamOptimizer(
-            learning_rate=self._config['learning_rate'])
+        if self._config['optimizer'] == 'adam':
+            optimizer = tf.train.AdamOptimizer(
+                learning_rate=self._config['learning_rate'])
+        elif self._config['optimizer'] == 'adagrad':
+            optimizer = tf.train.AdagradOptimizer(
+                learning_rate=self._config['learning_rate'])
 
         self._ops.grads_and_vars = [(
             tf.clip_by_norm(
