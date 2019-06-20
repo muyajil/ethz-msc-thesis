@@ -106,7 +106,7 @@ class HGRU4Rec(object):
 
         return batch, user_embeddings, session_embeddings
 
-    def train(self, dataset):
+    def train(self, train_dataset, validation_dataset=None):
         # TODO: setup model, restore if necessary
         with tf.Session() as sess:
             local_init_op = tf.local_variables_initializer()
@@ -119,12 +119,12 @@ class HGRU4Rec(object):
                 self._config['log_dir'], graph=sess.graph)
 
             for epoch in range(self._config['epochs']):
-                batches = dataset.feature_and_label_generator()
+                batches = train_dataset.feature_and_label_generator()
 
                 for batch in batches:
                     batch, user_embeddings, session_embeddings = self._preprocess(
                         batch)
-
+                    # TODO: Extract a single step into its own method -> can be called from validate as well
                     fetches = [summaries,
                                self._ops.session_embeddings,
                                self._ops.global_step,
@@ -180,20 +180,21 @@ class HGRU4Rec(object):
 
                     if global_step % 100 == 0:
 
+                        # TODO: Also log MRR, Precision and Recall
                         self.logger.info(
                             f"EPOCH: {epoch} - STEP: {global_step} - CE: {cross_entropy_loss} - TOP1: {top1_loss}")
 
                     if global_step % self._config['eval_every_steps'] == 0:
                         self._save(global_step)
-                        self.validate()
+                        self.validate(validation_dataset)
 
                     if self._stopping_condition_met():
                         # TODO: gracefully exit and save checkpoint
                         pass
-
+                # TODO: Run last evaluation and log results
                 self._save(global_step, export_model=True)
 
-    def validate(self):
+    def validate(self, validation_dataset):
         # TODO: Implement validation of model
         pass
 
