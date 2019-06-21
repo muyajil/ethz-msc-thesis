@@ -132,6 +132,8 @@ class HGRU4Rec(object):
                     break
 
                 result = self._run_step(batch, fetch_dict)
+                if result is None:
+                    continue
                 metrics = self._get_metrics()
 
                 writer.add_summary(
@@ -165,11 +167,13 @@ class HGRU4Rec(object):
         fetch_dict = self._get_fetch_dict(mode)
         for batch in batches:
             result = self._run_step(batch, fetch_dict)
+            if result is None:
+                continue
             metrics = self._get_metrics()
 
         summary_writer.add_summary(
             result['summary_str'], result['global_step'])
-        
+
         self.logger.info(self._get_logline(mode, result, epoch, metrics))
 
     def _get_logline(self, mode, result, epoch, metrics):
@@ -192,6 +196,9 @@ class HGRU4Rec(object):
     def _run_step(self, batch, fetch_dict):
         batch, user_embeddings, session_embeddings = self._preprocess(
             batch)
+
+        if tf.shape(batch)[0] == 0:
+            return None
 
         result = self._sess.run(fetch_dict,
                                 feed_dict={
