@@ -23,8 +23,8 @@ class HGRU4Rec(object):
         self._session_embeddings = dict()
         self._config = config
         self._ops = HGRU4RecOps()
-        self._saver = tf.train.Saver()
-        self._sess = tf.Session()
+        self._saver = None
+        self._sess = None
         self.logger = logging.getLogger('HGRU4Rec')
 
     def _update_embeddings(self, embeddings, updates, indices):
@@ -497,6 +497,9 @@ class HGRU4Rec(object):
             global_step=self._ops.global_step)
 
         self._setup_summaries()
+
+        self._sess = tf.Session()
+        self._saver = tf.train.Saver()
 
         if restore:
             self._restore(restore_embeddings)
