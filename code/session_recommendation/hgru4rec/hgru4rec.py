@@ -108,6 +108,7 @@ class HGRU4Rec(object):
 
         return fetch_dict
 
+    # TODO: Move to abstract class
     def train(self, train_dataset, validation_dataset=None):
         local_init_op = tf.local_variables_initializer()
         global_init_op = tf.global_variables_initializer()
@@ -158,6 +159,7 @@ class HGRU4Rec(object):
         self.validate(validation_dataset, writer, local_init_op, epoch)
         self._save(result['global_step'], export_model=True)
 
+    # TODO: Move to abstract class
     def validate(self, validation_dataset, summary_writer, local_init_op, epoch):
         if validation_dataset is None:
             return
@@ -197,7 +199,7 @@ class HGRU4Rec(object):
         batch, user_embeddings, session_embeddings = self._preprocess(
             batch)
 
-        if tf.shape(batch)[0] == 0:
+        if batch.shape[0] == 0:
             return None
 
         result = self._sess.run(fetch_dict,
@@ -221,6 +223,7 @@ class HGRU4Rec(object):
         # TODO: Implement stopping conditions (early stopping, max steps etc)
         pass
 
+    # TODO: Move to abstract class
     def _restore(self, restore_embeddings):
         ckpt = tf.train.get_checkpoint_state(self._config['log_dir'] + 'checkpoints')
         if ckpt and ckpt.model_checkpoint_path:
@@ -230,6 +233,7 @@ class HGRU4Rec(object):
             self._user_embeddings = json.load(open(self._config['log_dir'] + 'user_embeddings.json'))
             self._session_embeddings = json.load(open(self._config['log_dir'] + 'session_embeddings.json'))
 
+    # TODO: Move to abstract class
     def _save(self, global_step, export_model=False):
         if not os.path.exists(self._config['log_dir'] + 'checkpoints'):
             os.makedirs(self._config['log_dir'] + 'checkpoints')
@@ -245,6 +249,7 @@ class HGRU4Rec(object):
             # TODO: Export model as a servable
             pass
 
+    # TODO: Move to abstract class
     def predict(self, datapoint):
         # TODO: use sess.run([self.ops.ranked_predictions]) to get the ranked predictions
         pass
