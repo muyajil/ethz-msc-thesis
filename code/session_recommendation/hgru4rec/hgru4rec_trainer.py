@@ -56,11 +56,15 @@ def main():
     model_instance.logger.info('Started execution of trainer!')
     model_instance.setup_model()
 
-    dataset = UserParallelMiniBatchDataset(
+    train_dataset = UserParallelMiniBatchDataset(
         args.batch_size,
         args.train_prefix)
 
-    model_instance.train(dataset)
+    valid_dataset = UserParallelMiniBatchDataset(
+        args.batch_size,
+        args.eval_prefix)
+
+    model_instance.train(train_dataset, valid_dataset)
 
     json.dump(model_instance.user_embeddings, open(args.log_dir + 'user_embeddings.json', 'w'))
     json.dump(model_instance.session_embeddings, open(args.log_dir + 'session_embeddings.json', 'w'))

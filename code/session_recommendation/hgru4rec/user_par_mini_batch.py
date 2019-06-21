@@ -24,7 +24,7 @@ class UserParallelMiniBatchDataset(object):
             project_id='machinelearning-prod',
             service_account_json=None)
 
-    def user_iterator(self):
+    def _user_iterator(self):
         paths = get_paths_with_prefix(
             self.sessions_by_user_prefix,
             gcs_client=self.client)
@@ -36,7 +36,7 @@ class UserParallelMiniBatchDataset(object):
             for user_id in user_ids:
                 yield user_id, merged_shard[user_id]
 
-    def event_iterator(self, user_sessions):
+    def _event_iterator(self, user_sessions):
         sorted_session_ids = sorted(user_sessions.keys(),
                                     key=lambda y: user_sessions[y]['StartTime'])
         for session_id in sorted_session_ids:
@@ -57,30 +57,30 @@ class UserParallelMiniBatchDataset(object):
                 event['SessionId'] = int(session_id)
                 yield event
 
-    def get_next_event_or_none(self, active_user):
+    def _get_next_event_or_none(self, active_user):
         try:
             return next(active_user['Events'])
         except StopIteration:
             return None
 
-    def get_next_user_or_none(self, users):
+    def _get_next_user_or_none(self, users):
         try:
             user_id, user_sessions = next(users)
             return {
                 'UserId': int(user_id),
-                'Events': self.event_iterator(user_sessions)
+                'Events': self._event_iterator(user_sessions)
             }
         except StopIteration:
             return None
 
-    def user_parallel_batch_iterator(self):
+    def _user_parallel_batch_iterator(self):
 
         active_users = dict()
-        users = self.user_iterator()
+        users = self._user_iterator()
 
         # Initial fill of users
         for i in range(self.batch_size):
-            active_users[i] = self.get_next_user_or_none(users)
+            active_users[i] = self._get_next_user_or_none(users)
 
         while True:
             next_batch = dict()
@@ -91,15 +91,15 @@ class UserParallelMiniBatchDataset(object):
 
                 # There are still users available
                 else:
-                    next_event = self.get_next_event_or_none(active_users[idx])
+                    next_event = self._get_next_event_or_none(active_users[idx])
                     while next_event is None:
-                        next_user = self.get_next_user_or_none(users)
+                        next_user = self._get_next_user_or_none(users)
                         if next_user is None:
                             active_users[idx] = None
                             break
                         else:
                             active_users[idx] = next_user
-                            next_event = self.get_next_event_or_none(
+                            next_event = self._get_next_event_or_none(
                                 active_users[idx])
                             if next_event is not None:
                                 next_event['UserChanged'] = 1
@@ -119,7 +119,7 @@ class UserParallelMiniBatchDataset(object):
             yield pd.DataFrame(list(next_batch.values()))
 
     def feature_and_label_generator(self):
-        iterator = self.user_parallel_batch_iterator()
+        iterator = self._user_parallel_batch_iterator()
 
         features = next(iterator)
         while True:

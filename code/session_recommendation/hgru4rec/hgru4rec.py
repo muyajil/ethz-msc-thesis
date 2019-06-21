@@ -6,65 +6,12 @@ from tensorflow.contrib.cudnn_rnn import CudnnGRU
 from tensorflow.metrics import precision_at_k, recall_at_k
 from functools import partial
 from metrics import mrr_at_k, top1_loss
+from ops import HGRU4RecOps
 import logging
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO)
-
-
-class HGRU4RECSummaries(object):
-    logits = None
-    cross_entropy_loss = None
-    top1_loss = None
-    top_predictions = None
-    mrr_at_10 = None
-    precision_at_10 = None
-    recall_at_10 = None
-    session_embeddings = None
-    user_embeddings = None
-
-
-class HGRU4RECFeatures(object):
-    user_embeddings = None
-    session_embeddings = None
-    product_embedding_ids = None
-    session_changed = None
-    user_ids = None
-
-
-class HGRU4RecLosses(object):
-    cross_entropy_loss = None
-    top1_loss = None
-
-
-class HGRU4RecMetrics(object):
-    mrr_at_10 = None
-    precision_at_10 = None
-    recall_at_10 = None
-
-    mrr_update_op = None
-    precision_update_op = None
-    recall_update_op = None
-
-
-class HGRU4RecOps(object):
-    features = HGRU4RECFeatures()
-    labels = None
-
-    metrics = HGRU4RecMetrics()
-    summaries = HGRU4RECSummaries()
-    global_step = None
-
-    user_embeddings = None
-    session_embeddings = None
-
-    ranked_predictions = None
-
-    losses = HGRU4RecLosses()
-    optimizer = None
-    grads_and_vars = None
-
-    logits = None
+    format='%(asctime)s - %(message)s',
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %H:%M:%S')
 
 
 class HGRU4Rec(object):
@@ -106,97 +53,162 @@ class HGRU4Rec(object):
 
         return batch, user_embeddings, session_embeddings
 
+    def _postprocess(self, result, batch):
+        if self._config['use_user_rnn']:
+
+            self._update_embeddings(
+                self.user_embeddings,
+                result['user_embeddings'],
+                batch['UserId'])
+
+        self._update_embeddings(
+            self.session_embeddings,
+            result['session_embeddings'],
+            batch['SessionId'])
+
+    def _get_fetch_dict(self, mode):
+
+        fetch_dict = dict()
+
+        if mode == tf.estimator.ModeKeys.PREDICT:
+            fetch_dict['ranked_preds'] = self._ops.ranked_predictions
+            return fetch_dict
+
+        else:
+            fetch_dict['global_step'] = self._ops.global_step
+            fetch_dict['cross_entropy_loss'] = self._ops.losses.cross_entropy_loss
+            fetch_dict['top1_loss'] = self._ops.losses.top1_loss
+            fetch_dict['mrr_update_op'] = self._ops.metrics.mrr_update_op
+            fetch_dict['precision_update_op'] = self._ops.metrics.precision_update_op
+            fetch_dict['recall_update_op'] = self._ops.metrics.recall_update_op
+
+            if mode == tf.estimator.ModeKeys.TRAIN:
+                fetch_dict['session_embeddings'] = self._ops.session_embeddings
+                if self._config['use_user_rnn']:
+                    fetch_dict['user_embeddings'] = self._ops.user_embeddings
+                fetch_dict['optimizer'] = self._ops.optimizer
+                fetch_dict['summary_str'] = tf.summary.merge(
+                    self._ops.summaries.train_summaries)
+            else:
+                fetch_dict['summary_str'] = tf.summary.merge(
+                    self._ops.summaries.eval_summaries)
+            return fetch_dict
+
+    def _get_metrics_fetch_dict(self):
+        fetch_dict = dict()
+        fetch_dict['mrr'] = self._ops.metrics.mrr_at_10
+        fetch_dict['precision'] = self._ops.metrics.precision_at_10
+        fetch_dict['recall'] = self._ops.metrics.recall_at_10
+        fetch_dict['summary_str'] = tf.summary.merge(
+            self._ops.summaries.metrics_summaries)
+
+        return fetch_dict
+
     def train(self, train_dataset, validation_dataset=None):
-        # TODO: setup model, restore if necessary
         with tf.Session() as sess:
             local_init_op = tf.local_variables_initializer()
             global_init_op = tf.global_variables_initializer()
-            sess.run(local_init_op)
             sess.run(global_init_op)
 
-            summaries = tf.summary.merge_all()
+            early_stop = False
+            mode = tf.estimator.ModeKeys.TRAIN
+
             writer = tf.summary.FileWriter(
                 self._config['log_dir'], graph=sess.graph)
 
+            fetch_dict = self._get_fetch_dict(mode)
+
             for epoch in range(self._config['epochs']):
+                if early_stop:
+                    break
                 batches = train_dataset.feature_and_label_generator()
 
                 for batch in batches:
-                    batch, user_embeddings, session_embeddings = self._preprocess(
-                        batch)
-                    # TODO: Extract a single step into its own method -> can be called from validate as well
-                    fetches = [summaries,
-                               self._ops.session_embeddings,
-                               self._ops.global_step,
-                               self._ops.losses.cross_entropy_loss,
-                               self._ops.losses.top1_loss,
-                               self._ops.optimizer,
-                               self._ops.metrics.mrr_update_op,
-                               self._ops.metrics.precision_update_op,
-                               self._ops.metrics.recall_update_op]
+                    sess.run(local_init_op)
+                    if early_stop:
+                        break
 
-                    if self._config['use_user_rnn']:
-                        fetches.append(self._ops.user_embeddings)
+                    result = self._run_step(sess, batch, fetch_dict)
+                    metrics = self._get_metrics(sess)
 
-                    result = sess.run(fetches,
-                                      feed_dict={
-                                          self._ops.features.user_embeddings: user_embeddings,
-                                          self._ops.features.session_embeddings: session_embeddings,
-                                          self._ops.features.product_embedding_ids: batch['EmbeddingId'],
-                                          self._ops.features.user_ids: batch['UserId'],
-                                          self._ops.features.session_changed: batch['SessionChanged'],
-                                          self._ops.labels: batch['LabelEmbeddingId']
-                                      })
+                    writer.add_summary(
+                        result['summary_str'], result['global_step'])
 
-                    if self._config['use_user_rnn']:
-                        (summary_str,
-                         updated_session_embeddings,
-                         global_step,
-                         cross_entropy_loss,
-                         top1_loss,
-                         _, _, _, _,
-                         updated_user_embeddings) = result
-                    else:
-                        (summary_str,
-                         updated_session_embeddings,
-                         global_step,
-                         cross_entropy_loss,
-                         top1_loss,
-                         _, _, _, _) = result
+                    writer.add_summary(
+                        metrics['summary_str'], result['global_step'])
 
-                    writer.add_summary(summary_str, global_step)
+                    self._postprocess(result, batch)
 
-                    if self._config['use_user_rnn']:
+                    if result['global_step'] % 100 == 0:
+                        self.logger.info(self._get_logline(
+                            mode, result, epoch, metrics))
 
-                        self._update_embeddings(
-                            self.user_embeddings,
-                            updated_user_embeddings,
-                            batch['UserId'])
-
-                    self._update_embeddings(
-                        self.session_embeddings,
-                        updated_session_embeddings,
-                        batch['SessionId'])
-
-                    if global_step % 100 == 0:
-
-                        # TODO: Also log MRR, Precision and Recall
-                        self.logger.info(
-                            f"EPOCH: {epoch} - STEP: {global_step} - CE: {cross_entropy_loss} - TOP1: {top1_loss}")
-
-                    if global_step % self._config['eval_every_steps'] == 0:
-                        self._save(global_step)
-                        self.validate(validation_dataset)
+                    if result['global_step'] % self._config['eval_every_steps'] == 0:
+                        self._save(result['global_step'])
+                        self.validate(validation_dataset, writer,
+                                      sess, local_init_op, epoch)
 
                     if self._stopping_condition_met():
-                        # TODO: gracefully exit and save checkpoint
-                        pass
-                # TODO: Run last evaluation and log results
-                self._save(global_step, export_model=True)
+                        early_stop = True
 
-    def validate(self, validation_dataset):
-        # TODO: Implement validation of model
-        pass
+            self.validate(validation_dataset, writer,
+                          sess, local_init_op, epoch)
+            self._save(result['global_step'], export_model=True)
+
+    def validate(self, validation_dataset, summary_writer, sess, local_init_op, epoch):
+        if validation_dataset is None:
+            return
+        batches = validation_dataset.feature_and_label_generator()
+        sess.run(local_init_op)
+        mode = tf.estimator.ModeKeys.EVAL
+        fetch_dict = self._get_fetch_dict(mode)
+        for batch in batches:
+            result = self._run_step(sess, batch, fetch_dict)
+            metrics = self._get_metrics(sess)
+
+        summary_writer.add_summary(
+            result['summary_str'], result['global_step'])
+        summary_writer.add_summary(
+            metrics['summary_str'], result['global_step'])
+        self.logger.info(self._get_logline(mode, result, epoch, metrics))
+
+    def _get_logline(self, mode, result, epoch, metrics):
+
+        if mode == tf.estimator.ModeKeys.TRAIN:
+            logline = "[TRAIN]\t"
+        else:
+            logline = "[EVAL]\t"
+
+        logline += f"E: {epoch}\t"
+        logline += f"S: {result['global_step']}\t"
+        logline += f"CE: {result['cross_entropy_loss']:4.2f}\t"
+        logline += f"TOP1: {result['top1_loss']:4.2f}\t"
+        logline += f"MRR: {metrics['mrr']:4.2f}\t"
+        logline += f"P: {metrics['precision']:4.2f}\t"
+        logline += f"R: {metrics['recall']:4.2f}"
+
+        return logline
+
+    def _run_step(self, sess, batch, fetch_dict):
+        batch, user_embeddings, session_embeddings = self._preprocess(
+            batch)
+
+        result = sess.run(fetch_dict,
+                          feed_dict={
+                              self._ops.features.user_embeddings: user_embeddings,
+                              self._ops.features.session_embeddings: session_embeddings,
+                              self._ops.features.product_embedding_ids: batch['EmbeddingId'],
+                              self._ops.features.user_ids: batch['UserId'],
+                              self._ops.features.session_changed: batch['SessionChanged'],
+                              self._ops.labels: batch['LabelEmbeddingId']
+                          })
+
+        return result
+
+    def _get_metrics(self, sess):
+        fetch_dict = self._get_metrics_fetch_dict()
+        metrics = sess.run(fetch_dict)
+        return metrics
 
     def _stopping_condition_met(self):
         # TODO: Implement stopping conditions (early stopping, max steps etc)
@@ -204,6 +216,7 @@ class HGRU4Rec(object):
 
     def _restore(self):
         # TODO: Implement restoring mechanism
+        # TODO: Implement restoring of embeddings -> Only if training/validation prediction gets the datapoint directly
         pass
 
     def _save(self, global_step, export_model=False):
@@ -213,7 +226,7 @@ class HGRU4Rec(object):
             pass
         pass
 
-    def predict(self):
+    def predict(self, datapoint):
         # TODO: use sess.run([self.ops.ranked_predictions]) to get the ranked predictions
         pass
 
@@ -313,9 +326,13 @@ class HGRU4Rec(object):
             k=10,
             name='compute_mrr')
 
-        tf.summary.scalar(
-            'metrics/mrr_at_10',
-            self._ops.metrics.mrr_at_10)
+        self._ops.summaries.metrics_summaries.append(tf.summary.scalar(
+            'train_metrics/mrr_at_10',
+            self._ops.metrics.mrr_at_10))
+
+        self._ops.summaries.eval_summaries.append(tf.summary.scalar(
+            'eval_metrics/mrr_at_10',
+            self._ops.metrics.mrr_at_10))
 
         (self._ops.metrics.precision_at_10,
          self._ops.metrics.precision_update_op) = tf.metrics.precision_at_k(
@@ -324,9 +341,13 @@ class HGRU4Rec(object):
             k=10,
             name='compute_precision')
 
-        tf.summary.scalar(
-            'metrics/precision_at_10',
-            self._ops.metrics.precision_at_10)
+        self._ops.summaries.metrics_summaries.append(tf.summary.scalar(
+            'train_metrics/precision_at_10',
+            self._ops.metrics.precision_at_10))
+
+        self._ops.summaries.eval_summaries.append(tf.summary.scalar(
+            'eval_metrics/precision_at_10',
+            self._ops.metrics.precision_at_10))
 
         (self._ops.metrics.recall_at_10,
          self._ops.metrics.recall_update_op) = tf.metrics.recall_at_k(
@@ -335,42 +356,50 @@ class HGRU4Rec(object):
             k=10,
             name='compute_recall')
 
-        tf.summary.scalar(
-            'metrics/recall_at_10',
-            self._ops.metrics.recall_at_10)
+        self._ops.summaries.metrics_summaries.append(tf.summary.scalar(
+            'train_metrics/recall_at_10',
+            self._ops.metrics.recall_at_10))
+
+        self._ops.summaries.eval_summaries.append(tf.summary.scalar(
+            'eval_metrics/recall_at_10',
+            self._ops.metrics.recall_at_10))
 
         for grad, var in self._ops.grads_and_vars:
             if grad is not None:
                 if isinstance(grad, tf.IndexedSlices):
-                    tf.summary.histogram(
+                    self._ops.summaries.train_summaries.append(tf.summary.histogram(
                         "gradients/{}".format(var.name.replace(':', '_')),
-                        grad.values)
+                        grad.values))
                 else:
-                    tf.summary.histogram(
+                    self._ops.summaries.train_summaries.append(tf.summary.histogram(
                         "gradients/{}".format(var.name.replace(':', '_')),
-                        grad)
+                        grad))
 
             if isinstance(var, tf.IndexedSlices):
-                tf.summary.histogram(
+                self._ops.summaries.train_summaries.append(tf.summary.histogram(
                     "variables/{}".format(var.name.replace(':', '_')),
-                    var.values)
+                    var.values))
             else:
-                tf.summary.histogram(
+                self._ops.summaries.train_summaries.append(tf.summary.histogram(
                     "variables/{}".format(var.name.replace(':', '_')),
-                    var)
+                    var))
 
-        tf.summary.scalar('losses/cross_entropy',
-                          self._ops.losses.cross_entropy_loss)
-        tf.summary.scalar('losses/top1', self._ops.losses.top1_loss)
-        tf.summary.histogram('observe/top_predictions', top_predictions)
-        tf.summary.histogram('observe/logits', self._ops.logits)
-        tf.summary.histogram('observe/labels', self._ops.labels)
+        self._ops.summaries.train_summaries.append(tf.summary.scalar('losses/cross_entropy',
+                                                                     self._ops.losses.cross_entropy_loss))
+        self._ops.summaries.train_summaries.append(
+            tf.summary.scalar('losses/top1', self._ops.losses.top1_loss))
+        self._ops.summaries.train_summaries.append(
+            tf.summary.histogram('observe/top_predictions', top_predictions))
+        self._ops.summaries.train_summaries.append(
+            tf.summary.histogram('observe/logits', self._ops.logits))
+        self._ops.summaries.train_summaries.append(
+            tf.summary.histogram('observe/labels', self._ops.labels))
 
         if self._config['use_user_rnn']:
-            tf.summary.histogram('observe/user_embeddings',
-                                 self._ops.user_embeddings)
-        tf.summary.histogram('observe/session_embeddings',
-                             self._ops.session_embeddings)
+            self._ops.summaries.train_summaries.append(tf.summary.histogram('observe/user_embeddings',
+                                                                            self._ops.user_embeddings))
+        self._ops.summaries.train_summaries.append(tf.summary.histogram('observe/session_embeddings',
+                                                                        self._ops.session_embeddings))
 
     def setup_model(self, restore=False):
 
@@ -450,6 +479,6 @@ class HGRU4Rec(object):
 
         self._ops.optimizer = optimizer.apply_gradients(
             self._ops.grads_and_vars,
-            global_step=tf.train.get_or_create_global_step())
+            global_step=self._ops.global_step)
 
         self._setup_summaries()
