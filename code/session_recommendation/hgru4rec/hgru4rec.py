@@ -8,6 +8,8 @@ from functools import partial
 from metrics import mrr_at_k, top1_loss
 from ops import HGRU4RecOps
 import logging
+import os
+import json
 logging.basicConfig(
     format='%(asctime)s - %(message)s',
     level=logging.INFO,
@@ -17,10 +19,12 @@ logging.basicConfig(
 class HGRU4Rec(object):
 
     def __init__(self, config):
-        self.user_embeddings = dict()
-        self.session_embeddings = dict()
+        self._user_embeddings = dict()
+        self._session_embeddings = dict()
         self._config = config
         self._ops = HGRU4RecOps()
+        self._saver = tf.train.Saver()
+        self._sess = tf.Session()
         self.logger = logging.getLogger('HGRU4Rec')
 
     def _update_embeddings(self, embeddings, updates, indices):
@@ -40,12 +44,12 @@ class HGRU4Rec(object):
         batch = batch.loc[batch['LastSessionEvent'] == 0].reset_index()
 
         user_embeddings = self._get_or_initialize_embeddings(
-            self.user_embeddings,
+            self._user_embeddings,
             batch['UserId'],
             self._config['user_rnn_units'])
 
         session_embeddings = self._get_or_initialize_embeddings(
-            self.session_embeddings,
+            self._session_embeddings,
             batch['SessionId'],
             self._config['session_rnn_units'])
 
@@ -57,12 +61,12 @@ class HGRU4Rec(object):
         if self._config['use_user_rnn']:
 
             self._update_embeddings(
-                self.user_embeddings,
+                self._user_embeddings,
                 result['user_embeddings'],
                 batch['UserId'])
 
         self._update_embeddings(
-            self.session_embeddings,
+            self._session_embeddings,
             result['session_embeddings'],
             batch['SessionId'])
 
@@ -105,71 +109,67 @@ class HGRU4Rec(object):
         return fetch_dict
 
     def train(self, train_dataset, validation_dataset=None):
-        with tf.Session() as sess:
-            local_init_op = tf.local_variables_initializer()
-            global_init_op = tf.global_variables_initializer()
-            sess.run(global_init_op)
+        local_init_op = tf.local_variables_initializer()
+        global_init_op = tf.global_variables_initializer()
+        self._sess.run(global_init_op)
 
-            early_stop = False
-            mode = tf.estimator.ModeKeys.TRAIN
+        early_stop = False
+        mode = tf.estimator.ModeKeys.TRAIN
 
-            writer = tf.summary.FileWriter(
-                self._config['log_dir'], graph=sess.graph)
+        writer = tf.summary.FileWriter(
+            self._config['log_dir'], graph=self._sess.graph)
 
-            fetch_dict = self._get_fetch_dict(mode)
+        fetch_dict = self._get_fetch_dict(mode)
 
-            for epoch in range(self._config['epochs']):
+        for epoch in range(self._config['epochs']):
+            if early_stop:
+                break
+            batches = train_dataset.feature_and_label_generator()
+
+            for batch in batches:
+                self._sess.run(local_init_op)
                 if early_stop:
                     break
-                batches = train_dataset.feature_and_label_generator()
 
-                for batch in batches:
-                    sess.run(local_init_op)
-                    if early_stop:
-                        break
+                result = self._run_step(batch, fetch_dict)
+                metrics = self._get_metrics()
 
-                    result = self._run_step(sess, batch, fetch_dict)
-                    metrics = self._get_metrics(sess)
+                writer.add_summary(
+                    result['summary_str'], result['global_step'])
 
-                    writer.add_summary(
-                        result['summary_str'], result['global_step'])
+                writer.add_summary(
+                    metrics['summary_str'], result['global_step'])
 
-                    writer.add_summary(
-                        metrics['summary_str'], result['global_step'])
+                self._postprocess(result, batch)
 
-                    self._postprocess(result, batch)
+                if result['global_step'] % 100 == 0:
+                    self.logger.info(self._get_logline(
+                        mode, result, epoch, metrics))
 
-                    if result['global_step'] % 100 == 0:
-                        self.logger.info(self._get_logline(
-                            mode, result, epoch, metrics))
+                if result['global_step'] % self._config['eval_every_steps'] == 0:
+                    self._save(result['global_step'])
+                    self.validate(validation_dataset, writer, local_init_op, epoch)
 
-                    if result['global_step'] % self._config['eval_every_steps'] == 0:
-                        self._save(result['global_step'])
-                        self.validate(validation_dataset, writer,
-                                      sess, local_init_op, epoch)
+                if self._stopping_condition_met():
+                    early_stop = True
 
-                    if self._stopping_condition_met():
-                        early_stop = True
+        self.validate(validation_dataset, writer, local_init_op, epoch)
+        self._save(result['global_step'], export_model=True)
 
-            self.validate(validation_dataset, writer,
-                          sess, local_init_op, epoch)
-            self._save(result['global_step'], export_model=True)
-
-    def validate(self, validation_dataset, summary_writer, sess, local_init_op, epoch):
+    def validate(self, validation_dataset, summary_writer, local_init_op, epoch):
         if validation_dataset is None:
             return
         batches = validation_dataset.feature_and_label_generator()
-        sess.run(local_init_op)
+        self._sess.run(local_init_op)
         mode = tf.estimator.ModeKeys.EVAL
         fetch_dict = self._get_fetch_dict(mode)
         for batch in batches:
-            result = self._run_step(sess, batch, fetch_dict)
-            metrics = self._get_metrics(sess)
+            result = self._run_step(batch, fetch_dict)
+            metrics = self._get_metrics()
 
         summary_writer.add_summary(
             result['summary_str'], result['global_step'])
-        summary_writer.add_summary(
-            metrics['summary_str'], result['global_step'])
+        
         self.logger.info(self._get_logline(mode, result, epoch, metrics))
 
     def _get_logline(self, mode, result, epoch, metrics):
@@ -189,42 +189,54 @@ class HGRU4Rec(object):
 
         return logline
 
-    def _run_step(self, sess, batch, fetch_dict):
+    def _run_step(self, batch, fetch_dict):
         batch, user_embeddings, session_embeddings = self._preprocess(
             batch)
 
-        result = sess.run(fetch_dict,
-                          feed_dict={
-                              self._ops.features.user_embeddings: user_embeddings,
-                              self._ops.features.session_embeddings: session_embeddings,
-                              self._ops.features.product_embedding_ids: batch['EmbeddingId'],
-                              self._ops.features.user_ids: batch['UserId'],
-                              self._ops.features.session_changed: batch['SessionChanged'],
-                              self._ops.labels: batch['LabelEmbeddingId']
-                          })
+        result = self._sess.run(fetch_dict,
+                                feed_dict={
+                                    self._ops.features.user_embeddings: user_embeddings,
+                                    self._ops.features.session_embeddings: session_embeddings,
+                                    self._ops.features.product_embedding_ids: batch['EmbeddingId'],
+                                    self._ops.features.user_ids: batch['UserId'],
+                                    self._ops.features.session_changed: batch['SessionChanged'],
+                                    self._ops.labels: batch['LabelEmbeddingId']
+                                })
 
         return result
 
-    def _get_metrics(self, sess):
+    def _get_metrics(self):
         fetch_dict = self._get_metrics_fetch_dict()
-        metrics = sess.run(fetch_dict)
+        metrics = self._sess.run(fetch_dict)
         return metrics
 
     def _stopping_condition_met(self):
         # TODO: Implement stopping conditions (early stopping, max steps etc)
         pass
 
-    def _restore(self):
-        # TODO: Implement restoring mechanism
-        # TODO: Implement restoring of embeddings -> Only if training/validation prediction gets the datapoint directly
-        pass
+    def _restore(self, mode):
+        ckpt = tf.train.get_checkpoint_state(self._config['log_dir'] + 'checkpoints')
+        if ckpt and ckpt.model_checkpoint_path:
+            self._saver.restore(self._sess, ckpt.model_checkpoint_path)
+
+        if mode != tf.estimator.ModeKeys.PREDICT:
+            self._user_embeddings = json.load(open(self._config['log_dir'] + 'user_embeddings.json'))
+            self._session_embeddings = json.load(open(self._config['log_dir'] + 'session_embeddings.json'))
 
     def _save(self, global_step, export_model=False):
-        # TODO: Implement checkpoint saving
+        if not os.path.exists(self._config['log_dir'] + 'checkpoints'):
+            os.makedirs(self._config['log_dir'] + 'checkpoints')
+
+        self._saver.save(
+            self._sess,
+            self._config['log_dir'] + 'checkpoints/model.ckpt',
+            global_step=global_step)
+
         if export_model:
+            json.dump(self._user_embeddings, open(self._config['log_dir'] + 'user_embeddings.json', 'w'))
+            json.dump(self._session_embeddings, open(self._config['log_dir'] + 'session_embeddings.json', 'w'))
             # TODO: Export model as a servable
             pass
-        pass
 
     def predict(self, datapoint):
         # TODO: use sess.run([self.ops.ranked_predictions]) to get the ranked predictions
@@ -402,11 +414,7 @@ class HGRU4Rec(object):
                                                                         self._ops.session_embeddings))
 
     def setup_model(self, restore=False):
-
-        if restore:
-            self._restore()
-
-        # TODO: Handle restoring and saving of the model
+        
         self._ops.global_step = tf.train.get_or_create_global_step()
         self._ops.labels = tf.placeholder(tf.int64, [None])
         self._ops.features.product_embedding_ids = tf.placeholder(tf.int64, [
@@ -482,3 +490,6 @@ class HGRU4Rec(object):
             global_step=self._ops.global_step)
 
         self._setup_summaries()
+
+        if restore:
+            self._restore()
