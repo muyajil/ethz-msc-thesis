@@ -214,12 +214,12 @@ class HGRU4Rec(object):
         # TODO: Implement stopping conditions (early stopping, max steps etc)
         pass
 
-    def _restore(self, mode):
+    def _restore(self, restore_embeddings):
         ckpt = tf.train.get_checkpoint_state(self._config['log_dir'] + 'checkpoints')
         if ckpt and ckpt.model_checkpoint_path:
             self._saver.restore(self._sess, ckpt.model_checkpoint_path)
 
-        if mode != tf.estimator.ModeKeys.PREDICT:
+        if restore_embeddings:
             self._user_embeddings = json.load(open(self._config['log_dir'] + 'user_embeddings.json'))
             self._session_embeddings = json.load(open(self._config['log_dir'] + 'session_embeddings.json'))
 
@@ -413,7 +413,7 @@ class HGRU4Rec(object):
         self._ops.summaries.train_summaries.append(tf.summary.histogram('observe/session_embeddings',
                                                                         self._ops.session_embeddings))
 
-    def setup_model(self, restore=False):
+    def setup_model(self, restore=False, restore_embeddings=False):
         
         self._ops.global_step = tf.train.get_or_create_global_step()
         self._ops.labels = tf.placeholder(tf.int64, [None])
@@ -492,4 +492,4 @@ class HGRU4Rec(object):
         self._setup_summaries()
 
         if restore:
-            self._restore()
+            self._restore(restore_embeddings)
