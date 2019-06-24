@@ -272,7 +272,8 @@ class HGRU4Rec(object):
                     "EmbeddingId": self._ops.features.product_embedding_ids
                 },
                 outputs={
-                    "RankedPredictions": self._ops.ranked_predictions
+                    "RankedPredictions": self._ops.ranked_predictions,
+                    "SessionEmbeddings": self._ops.session_embeddings
                 }
             )
 
