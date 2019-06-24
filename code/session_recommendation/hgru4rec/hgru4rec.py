@@ -25,6 +25,7 @@ class HGRU4Rec(object):
         self._ops = HGRU4RecOps()
         self._saver = None
         self._sess = None
+        self._eval_metric_history = []
         self.logger = logging.getLogger('HGRU4Rec')
 
     def _update_embeddings(self, embeddings, updates, indices):
@@ -109,7 +110,7 @@ class HGRU4Rec(object):
         return fetch_dict
 
     # TODO: Move to abstract class
-    def train(self, train_dataset, validation_dataset=None):
+    def train(self, train_dataset, validation_dataset=None, eval_metric_key=None):
         local_init_op = tf.local_variables_initializer()
         global_init_op = tf.global_variables_initializer()
         self._sess.run(global_init_op)
@@ -151,16 +152,16 @@ class HGRU4Rec(object):
 
                 if result['global_step'] % self._config['eval_every_steps'] == 0:
                     self._save(result['global_step'])
-                    self.validate(validation_dataset, writer, local_init_op, epoch)
+                    self.validate(validation_dataset, writer, local_init_op, epoch, 'mrr')
 
-                if self._stopping_condition_met():
-                    early_stop = True
+                    if self._stopping_condition_met():
+                        early_stop = True
 
         self.validate(validation_dataset, writer, local_init_op, epoch)
         self._save(result['global_step'], export_model=True)
 
     # TODO: Move to abstract class
-    def validate(self, validation_dataset, summary_writer, local_init_op, epoch):
+    def validate(self, validation_dataset, summary_writer, local_init_op, epoch, eval_metric_key=None):
         if validation_dataset is None:
             return
         batches = validation_dataset.feature_and_label_generator()
@@ -175,6 +176,9 @@ class HGRU4Rec(object):
 
         summary_writer.add_summary(
             result['summary_str'], result['global_step'])
+
+        if eval_metric_key is not None:
+            self._eval_metric_history.append((result['global_step'], metrics[eval_metric_key]))
 
         self.logger.info(self._get_logline(mode, result, epoch, metrics))
 
@@ -207,7 +211,6 @@ class HGRU4Rec(object):
                                     self._ops.features.user_embeddings: user_embeddings,
                                     self._ops.features.session_embeddings: session_embeddings,
                                     self._ops.features.product_embedding_ids: batch['EmbeddingId'],
-                                    self._ops.features.user_ids: batch['UserId'],
                                     self._ops.features.session_changed: batch['SessionChanged'],
                                     self._ops.labels: batch['LabelEmbeddingId']
                                 })
@@ -220,8 +223,19 @@ class HGRU4Rec(object):
         return metrics
 
     def _stopping_condition_met(self):
-        # TODO: Implement stopping conditions (early stopping, max steps etc)
-        pass
+        last_step, last_eval_metric = self._eval_metric_history[-1]
+        if last_step < self._config['min_train_steps']:
+            return False
+        if last_step > self._config['train_steps']:
+            return True
+        
+        for step, eval_metric in reversed(self._eval_metric_history[:-1]):
+            if last_step - step > self._config['max_steps_without_increase']:
+                return True
+            if eval_metric < last_eval_metric:
+                return False
+
+        return False
 
     # TODO: Move to abstract class
     def _restore(self, restore_embeddings):
@@ -246,8 +260,19 @@ class HGRU4Rec(object):
         if export_model:
             json.dump(self._user_embeddings, open(self._config['log_dir'] + 'user_embeddings.json', 'w'))
             json.dump(self._session_embeddings, open(self._config['log_dir'] + 'session_embeddings.json', 'w'))
-            # TODO: Export model as a servable
-            pass
+            tf.saved_model.simple_save(
+                self._sess,
+                self._config['log_dir'] + 'exported_model',
+                inputs={
+                    "UserEmbeddings": self._ops.features.user_embeddings,
+                    "SessionEmbeddings": self._ops.features.session_embeddings,
+                    "SessionChanged": self._ops.features.session_changed,
+                    "EmbeddingId": self._ops.features.product_embedding_ids
+                },
+                outputs={
+                    "RankedPredictions": self._ops.ranked_predictions
+                }
+            )
 
     # TODO: Move to abstract class
     def predict(self, datapoint):
@@ -432,7 +457,6 @@ class HGRU4Rec(object):
         self._ops.features.product_embedding_ids = tf.placeholder(tf.int64, [
                                                                   None])
         self._ops.features.session_changed = tf.placeholder(tf.bool, [None])
-        self._ops.features.user_ids = tf.placeholder(tf.int64, [None])
 
         self._ops.features.user_embeddings = tf.placeholder(
             tf.float32,

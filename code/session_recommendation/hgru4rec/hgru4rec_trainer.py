@@ -64,7 +64,7 @@ def main():
         args.batch_size,
         args.eval_prefix)
 
-    model_instance.train(train_dataset, valid_dataset)
+    model_instance.train(train_dataset, valid_dataset, eval_metric_key='mrr')
 
     model_instance.logger.info('Finished execution of trainer!')
 

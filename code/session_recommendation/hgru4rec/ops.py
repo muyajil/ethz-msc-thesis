@@ -9,7 +9,6 @@ class HGRU4RECFeatures(object):
     session_embeddings = None
     product_embedding_ids = None
     session_changed = None
-    user_ids = None
 
 
 class HGRU4RecLosses(object):
