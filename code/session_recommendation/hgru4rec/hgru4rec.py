@@ -227,10 +227,12 @@ class HGRU4Rec(object):
         if last_step < self._config['min_train_steps']:
             return False
         if last_step > self._config['train_steps']:
+            self.logger.info('Max training steps reached, stopping early.')
             return True
         
         for step, eval_metric in reversed(self._eval_metric_history[:-1]):
             if last_step - step > self._config['max_steps_without_increase']:
+                self.logger.info('Max steps without increase in evaluation metric reached, stopping early.')
                 return True
             if eval_metric < last_eval_metric:
                 return False
