@@ -4,15 +4,15 @@ import pandas as pd
 from tensorflow.keras.layers import GRU, Dense, Dropout
 from tensorflow.contrib.cudnn_rnn import CudnnGRU
 from tensorflow.metrics import precision_at_k, recall_at_k
-from functools import partial
 from metrics import mrr_at_k, top1_loss
 from ops import HGRU4RecOps
 import logging
 import os
 import json
+import time
 logging.basicConfig(
-    format='%(asctime)s - %(message)s',
-    level=logging.INFO,
+    format='%(asctime)s | %(message)s',
+    level=logging.DEBUG,
     datefmt='%Y-%m-%d %H:%M:%S')
 
 
@@ -42,6 +42,8 @@ class HGRU4Rec(object):
         return np.array(result)
 
     def _preprocess(self, batch):
+        start = time.time()
+
         batch = batch.loc[batch['LastSessionEvent'] == 0].reset_index()
 
         user_embeddings = self._get_or_initialize_embeddings(
@@ -56,9 +58,14 @@ class HGRU4Rec(object):
 
         batch = batch.astype(dtype={'SessionChanged': np.bool})
 
+        self.logger.debug('\tPreprocessing:\t\t{:.2f} secs'.format(time.time() - start))
+
         return batch, user_embeddings, session_embeddings
 
     def _postprocess(self, result, batch):
+
+        start = time.time()
+
         if self._config['use_user_rnn']:
 
             self._update_embeddings(
@@ -71,12 +78,15 @@ class HGRU4Rec(object):
             result['session_embeddings'],
             batch['SessionId'])
 
+        self.logger.debug('\tPostprocessing:\t\t{:.2f} secs'.format(time.time() - start))
+
     def _get_fetch_dict(self, mode):
 
         fetch_dict = dict()
 
         if mode == tf.estimator.ModeKeys.PREDICT:
             fetch_dict['ranked_preds'] = self._ops.ranked_predictions
+            fetch_dict['session_embeddings'] = self._ops.session_embeddings
             return fetch_dict
 
         else:
@@ -122,6 +132,7 @@ class HGRU4Rec(object):
             self._config['log_dir'], graph=self._sess.graph)
 
         fetch_dict = self._get_fetch_dict(mode)
+        metrics_fetch_dict = self._get_metrics_fetch_dict()
 
         for epoch in range(self._config['epochs']):
             if early_stop:
@@ -129,14 +140,19 @@ class HGRU4Rec(object):
             batches = train_dataset.feature_and_label_generator()
 
             for batch in batches:
+                self.logger.debug('[START] Batch')
+                start = time.time()
                 self._sess.run(local_init_op)
+                self.logger.debug('\tLocal Init Op:\t\t{:.2f} secs'.format(time.time() - start))
                 if early_stop:
                     break
 
                 result = self._run_step(batch, fetch_dict)
                 if result is None:
                     continue
-                metrics = self._get_metrics()
+                metrics = self._get_metrics(metrics_fetch_dict)
+
+                writer_start = time.time()
 
                 writer.add_summary(
                     result['summary_str'], result['global_step'])
@@ -144,7 +160,11 @@ class HGRU4Rec(object):
                 writer.add_summary(
                     metrics['summary_str'], result['global_step'])
 
+                self.logger.debug('\tWrite summaries:\t{:.2f} secs'.format(time.time() - writer_start))
+
                 self._postprocess(result, batch)
+
+                self.logger.debug('[END] Batch total:\t{:.2f} secs'.format(time.time() - start))
 
                 if result['global_step'] % 100 == 0:
                     self.logger.info(self._get_logline(
@@ -152,16 +172,18 @@ class HGRU4Rec(object):
 
                 if result['global_step'] % self._config['eval_every_steps'] == 0:
                     self._save(result['global_step'])
-                    self.validate(validation_dataset, writer, local_init_op, epoch, 'mrr')
+                    self.validate(validation_dataset, writer, local_init_op, epoch, metrics_fetch_dict, 'mrr')
 
                     if self._stopping_condition_met():
                         early_stop = True
 
-        self.validate(validation_dataset, writer, local_init_op, epoch)
+        self.validate(validation_dataset, writer, local_init_op, epoch, metrics_fetch_dict)
         self._save(result['global_step'], export_model=True)
 
     # TODO: Move to abstract class
-    def validate(self, validation_dataset, summary_writer, local_init_op, epoch, eval_metric_key=None):
+    def validate(self, validation_dataset, summary_writer, local_init_op, epoch, metrics_fetch_dict, eval_metric_key=None):
+        self.logger.debug('[START] Validation')
+        start = time.time()
         if validation_dataset is None:
             return
         batches = validation_dataset.feature_and_label_generator()
@@ -172,7 +194,7 @@ class HGRU4Rec(object):
             result = self._run_step(batch, fetch_dict)
             if result is None:
                 continue
-            metrics = self._get_metrics()
+            metrics = self._get_metrics(metrics_fetch_dict)
 
         summary_writer.add_summary(
             result['summary_str'], result['global_step'])
@@ -181,6 +203,7 @@ class HGRU4Rec(object):
             self._eval_metric_history.append((result['global_step'], metrics[eval_metric_key]))
 
         self.logger.info(self._get_logline(mode, result, epoch, metrics))
+        self.logger.debug('[END] Validation took {:.2f} secs'.format(time.time() - start))
 
     def _get_logline(self, mode, result, epoch, metrics):
 
@@ -200,12 +223,14 @@ class HGRU4Rec(object):
         return logline
 
     def _run_step(self, batch, fetch_dict):
+        
         batch, user_embeddings, session_embeddings = self._preprocess(
             batch)
 
         if batch.shape[0] == 0:
             return None
 
+        start = time.time()
         result = self._sess.run(fetch_dict,
                                 feed_dict={
                                     self._ops.features.user_embeddings: user_embeddings,
@@ -215,11 +240,14 @@ class HGRU4Rec(object):
                                     self._ops.labels: batch['LabelEmbeddingId']
                                 })
 
+        self.logger.debug('\tRun iteration:\t\t{:.2f} secs'.format(time.time() - start))
+
         return result
 
-    def _get_metrics(self):
-        fetch_dict = self._get_metrics_fetch_dict()
+    def _get_metrics(self, fetch_dict):
+        start = time.time()
         metrics = self._sess.run(fetch_dict)
+        self.logger.debug('\tGet metrics:\t\t{:.2f} secs'.format(time.time() - start))
         return metrics
 
     def _stopping_condition_met(self):
@@ -229,7 +257,7 @@ class HGRU4Rec(object):
         if last_step > self._config['train_steps']:
             self.logger.info('Max training steps reached, stopping early.')
             return True
-        
+
         for step, eval_metric in reversed(self._eval_metric_history[:-1]):
             if last_step - step > self._config['max_steps_without_increase']:
                 self.logger.info('Max steps without increase in evaluation metric reached, stopping early.')
@@ -454,7 +482,7 @@ class HGRU4Rec(object):
                                                                         self._ops.session_embeddings))
 
     def setup_model(self, restore=False, restore_embeddings=False):
-        
+
         self._ops.global_step = tf.train.get_or_create_global_step()
         self._ops.labels = tf.placeholder(tf.int64, [None])
         self._ops.features.product_embedding_ids = tf.placeholder(tf.int64, [
