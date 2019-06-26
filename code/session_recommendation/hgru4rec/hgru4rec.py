@@ -12,7 +12,7 @@ import json
 import time
 logging.basicConfig(
     format='%(asctime)s | %(message)s',
-    level=logging.DEBUG,
+    level=logging.INFO,
     datefmt='%Y-%m-%d %H:%M:%S')
 
 
