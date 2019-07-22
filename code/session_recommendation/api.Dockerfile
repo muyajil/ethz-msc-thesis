@@ -9,8 +9,6 @@ RUN pip install --upgrade pip
 RUN pip install --no-cache-dir \
                 flask \
                 gunicorn \
-                tensorflow \
-                google-cloud-storage \
                 numpy
 
 RUN pip install https://storage.googleapis.com/dg-ml-packages/dg_ml_core.tar.gz

@@ -5,7 +5,7 @@ from tensorflow.keras.layers import GRU, Dense, Dropout
 from tensorflow.contrib.cudnn_rnn import CudnnGRU
 from tensorflow.metrics import precision_at_k, recall_at_k
 from metrics import mrr_at_k, top1_loss
-from ops import HGRU4RecOps
+from hgru4rec.ops import HGRU4RecOps
 import logging
 import os
 import json
@@ -181,7 +181,8 @@ class HGRU4Rec(object):
         self._save(result['global_step'], export_model=True)
 
     # TODO: Move to abstract class
-    def validate(self, validation_dataset, summary_writer, local_init_op, epoch, metrics_fetch_dict, eval_metric_key=None):
+    def validate(self, validation_dataset, summary_writer,
+                 local_init_op, epoch, metrics_fetch_dict, eval_metric_key=None):
         self.logger.debug('[START] Validation')
         start = time.time()
         if validation_dataset is None:
@@ -200,10 +201,12 @@ class HGRU4Rec(object):
             result['summary_str'], result['global_step'])
 
         if eval_metric_key is not None:
-            self._eval_metric_history.append((result['global_step'], metrics[eval_metric_key]))
+            self._eval_metric_history.append(
+                (result['global_step'], metrics[eval_metric_key]))
 
         self.logger.info(self._get_logline(mode, result, epoch, metrics))
-        self.logger.debug('[END] Validation took {:.2f} secs'.format(time.time() - start))
+        self.logger.debug(
+            '[END] Validation took {:.2f} secs'.format(time.time() - start))
 
     def _get_logline(self, mode, result, epoch, metrics):
 
@@ -223,7 +226,7 @@ class HGRU4Rec(object):
         return logline
 
     def _run_step(self, batch, fetch_dict):
-        
+
         batch, user_embeddings, session_embeddings = self._preprocess(
             batch)
 
@@ -252,9 +255,9 @@ class HGRU4Rec(object):
 
     def _stopping_condition_met(self):
         last_step, last_eval_metric = self._eval_metric_history[-1]
-        if last_step < self._config['min_train_steps']:
+        if self._config['min_train_steps'] and last_step < self._config['min_train_steps']:
             return False
-        if last_step > self._config['train_steps']:
+        if self._config['train_steps'] and last_step > self._config['train_steps']:
             self.logger.info('Max training steps reached, stopping early.')
             return True
 

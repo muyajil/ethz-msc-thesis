@@ -1,5 +1,0 @@
-{
-    "dataset_name": "maxi_dataset",
-    "model_name": "hrgu4rec",
-    "model_path": "gs://ma-muy/04_logs/with_user/250/maxi_dataset/cross_entropy/adam/bs_50/lr_0.001/es_100000/gc_0.01/ms_500000/"
-}
