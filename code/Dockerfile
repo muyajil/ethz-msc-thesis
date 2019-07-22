@@ -31,4 +31,3 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 RUN mkdir /logs
 
 ADD ./ /code/
-COPY ./product_embeddings.json /product_embeddings.json

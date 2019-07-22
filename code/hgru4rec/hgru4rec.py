@@ -19,7 +19,7 @@ logging.basicConfig(
 class HGRU4Rec(object):
 
     def __init__(self, config):
-        self._product_embeddings = json.load(open('/product_embeddings.json'))
+        self._product_embeddings = json.load(open('/code/product_embeddings.json'))
         self._user_embeddings = dict()
         self._session_embeddings = dict()
         self._config = config
