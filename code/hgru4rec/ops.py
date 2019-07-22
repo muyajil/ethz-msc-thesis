@@ -7,7 +7,7 @@ class HGRU4RECSummaries(object):
 class HGRU4RECFeatures(object):
     user_embeddings = None
     session_embeddings = None
-    product_embedding_ids = None
+    product_embeddings = None
     session_changed = None
 
 

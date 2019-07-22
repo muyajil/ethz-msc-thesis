@@ -19,6 +19,7 @@ logging.basicConfig(
 class HGRU4Rec(object):
 
     def __init__(self, config):
+        self._product_embeddings = json.load(open('/product_embeddings.json'))
         self._user_embeddings = dict()
         self._session_embeddings = dict()
         self._config = config
@@ -45,6 +46,12 @@ class HGRU4Rec(object):
         start = time.time()
 
         batch = batch.loc[batch['LastSessionEvent'] == 0].reset_index()
+        batch = batch.astype(
+            dtype={
+                'SessionChanged': bool,
+                'UserId': str,
+                'SessionId': str,
+                'ProductId': str})
 
         user_embeddings = self._get_or_initialize_embeddings(
             self._user_embeddings,
@@ -56,11 +63,16 @@ class HGRU4Rec(object):
             batch['SessionId'],
             self._config['session_rnn_units'])
 
+        product_embeddings = self._get_or_initialize_embeddings(
+            self._product_embeddings,
+            batch['ProductId'],
+            25)
+
         batch = batch.astype(dtype={'SessionChanged': np.bool})
 
         self.logger.debug('\tPreprocessing:\t\t{:.2f} secs'.format(time.time() - start))
 
-        return batch, user_embeddings, session_embeddings
+        return batch, user_embeddings, session_embeddings, product_embeddings
 
     def _postprocess(self, result, batch):
 
@@ -227,7 +239,7 @@ class HGRU4Rec(object):
 
     def _run_step(self, batch, fetch_dict):
 
-        batch, user_embeddings, session_embeddings = self._preprocess(
+        batch, user_embeddings, session_embeddings, product_embeddings = self._preprocess(
             batch)
 
         if batch.shape[0] == 0:
@@ -238,7 +250,7 @@ class HGRU4Rec(object):
                                 feed_dict={
                                     self._ops.features.user_embeddings: user_embeddings,
                                     self._ops.features.session_embeddings: session_embeddings,
-                                    self._ops.features.product_embedding_ids: batch['EmbeddingId'],
+                                    self._ops.features.product_embeddings: product_embeddings,
                                     self._ops.features.session_changed: batch['SessionChanged'],
                                     self._ops.labels: batch['LabelEmbeddingId']
                                 })
@@ -300,7 +312,7 @@ class HGRU4Rec(object):
                     "UserEmbeddings": self._ops.features.user_embeddings,
                     "SessionEmbeddings": self._ops.features.session_embeddings,
                     "SessionChanged": self._ops.features.session_changed,
-                    "EmbeddingId": self._ops.features.product_embedding_ids
+                    "ProductEmbeddings": self._ops.features.product_embeddings
                 },
                 outputs={
                     "RankedPredictions": self._ops.ranked_predictions,
@@ -351,7 +363,7 @@ class HGRU4Rec(object):
                      user_embeddings,
                      session_embeddings,
                      session_changed,
-                     product_ids):
+                     product_embeddings):
 
         with tf.variable_scope("session_rnn"):
 
@@ -384,12 +396,8 @@ class HGRU4Rec(object):
             new_session_embeddings,
             session_embeddings)
 
-        one_hot_encodings = tf.one_hot(
-            product_ids,
-            self._config['num_products'])
-
         predictions, session_embeddings = session_rnn(
-            tf.expand_dims(one_hot_encodings, 1),
+            tf.expand_dims(product_embeddings, 1),
             initial_state=session_embeddings)
 
         logits = output_layer(predictions)
@@ -488,8 +496,9 @@ class HGRU4Rec(object):
 
         self._ops.global_step = tf.train.get_or_create_global_step()
         self._ops.labels = tf.placeholder(tf.int64, [None])
-        self._ops.features.product_embedding_ids = tf.placeholder(tf.int64, [
-                                                                  None])
+        self._ops.features.product_embeddings = tf.placeholder(
+            tf.float32, 
+            [None, 25])
         self._ops.features.session_changed = tf.placeholder(tf.bool, [None])
 
         self._ops.features.user_embeddings = tf.placeholder(
@@ -504,7 +513,7 @@ class HGRU4Rec(object):
             self._ops.features.user_embeddings,
             self._ops.features.session_embeddings,
             self._ops.features.session_changed,
-            self._ops.features.product_embedding_ids)
+            self._ops.features.product_embeddings)
 
         if self._config['use_user_rnn']:
             (self._ops.logits,
