@@ -5,7 +5,7 @@ from tensorflow.keras.layers import GRU, Dense, Dropout
 from tensorflow.contrib.cudnn_rnn import CudnnGRU
 from tensorflow.metrics import precision_at_k, recall_at_k
 from metrics import mrr_at_k, top1_loss
-from hgru4rec.ops import HGRU4RecOps
+from ops import HGRU4RecOps
 import logging
 import os
 import json
