@@ -208,6 +208,8 @@ class HGRU4Rec(object):
         self.logger.debug(
             '[END] Validation took {:.2f} secs'.format(time.time() - start))
 
+        self._save(result['global_step'], export_model=True)
+
     def _get_logline(self, mode, result, epoch, metrics):
 
         if mode == tf.estimator.ModeKeys.TRAIN:
@@ -291,11 +293,9 @@ class HGRU4Rec(object):
             global_step=global_step)
 
         if export_model:
-            json.dump(self._user_embeddings, open(self._config['log_dir'] + 'user_embeddings.json', 'w'))
-            json.dump(self._session_embeddings, open(self._config['log_dir'] + 'session_embeddings.json', 'w'))
             tf.saved_model.simple_save(
                 self._sess,
-                self._config['log_dir'] + 'exported_model',
+                self._config['log_dir'] + 'exported_model/{}'.format(global_step),
                 inputs={
                     "UserEmbeddings": self._ops.features.user_embeddings,
                     "SessionEmbeddings": self._ops.features.session_embeddings,
@@ -307,6 +307,10 @@ class HGRU4Rec(object):
                     "SessionEmbeddings": self._ops.session_embeddings
                 }
             )
+            json.dump(self._user_embeddings, open(
+                self._config['log_dir'] + 'exported_model/{}/'.format(global_step) + 'user_embeddings.json', 'w'))
+            json.dump(self._session_embeddings, open(
+                self._config['log_dir'] + 'exported_model/{}/'.format(global_step) + 'session_embeddings.json', 'w'))
 
     # TODO: Move to abstract class
     def predict(self, datapoint):
