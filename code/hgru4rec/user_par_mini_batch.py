@@ -9,6 +9,7 @@ import random
 import argparse
 from dg_ml_core.datastores import gcs_utils
 import pandas as pd
+import requests
 
 
 class UserParallelMiniBatchDataset(object):
@@ -30,7 +31,12 @@ class UserParallelMiniBatchDataset(object):
             gcs_client=self.client)
         random.shuffle(paths)
         for path in paths:
-            merged_shard = dict_ops.load_dict(path, gcs_client=self.client)
+            merged_shard = None
+            while merged_shard is None:
+                try:
+                    merged_shard = dict_ops.load_dict(path, gcs_client=self.client)
+                except requests.exceptions.ChunkedEncodingError:
+                    pass
             user_ids = list(merged_shard.keys())
             random.shuffle(user_ids)
             for user_id in user_ids:
