@@ -72,9 +72,17 @@ The idea is to actually analyze the content of an item, be it the images in a mo
 The assumption is that a user likes to see items that are similar to each other (e.g. a user who mostly likes action films).
 However this method can also be used in different contexts, such as online-shopping, where the "content" of an item might be its textual description or an image of the actual product.
 \subsection{Well-Known Examples}
+In the following sections we will look at some well-known examples of recommendation engines and their properties.
+\subsubsection{Collaborative Filtering via SVD}
+As the name suggests model is a collaborative approach to a recommendation engine, meaning the model uses primarily interaction data between users and items.
+As mentioned in~\cite{intro_recsys} the main idea behind collaborative filtering is to recommend items to the user based on what users with similar taste liked in the past.
+Collaborative filtering refers to a class of models that use similar users' tastes to recommend items, making it a user-based recommendation system.
+The most popular way of implementing this model is by interpreting it as a matrix completion problem.
+
 \begin{itemize}
-    \item Describe a classical user based approach
-    \item Describe a classical item based approach
+    \item Collaborative Filtering
+    \item Content-based Filtering
+    \item Often Bought Together
 \end{itemize}
 
 \section{Concepts}
