@@ -293,24 +293,26 @@ class HGRU4Rec(object):
             global_step=global_step)
 
         if export_model:
-            tf.saved_model.simple_save(
-                self._sess,
-                self._config['log_dir'] + 'exported_model/{}'.format(global_step),
-                inputs={
-                    "UserEmbeddings": self._ops.features.user_embeddings,
-                    "SessionEmbeddings": self._ops.features.session_embeddings,
-                    "SessionChanged": self._ops.features.session_changed,
-                    "EmbeddingId": self._ops.features.product_embedding_ids
-                },
-                outputs={
-                    "RankedPredictions": self._ops.ranked_predictions,
-                    "SessionEmbeddings": self._ops.session_embeddings
-                }
-            )
-            json.dump(self._user_embeddings, open(
-                self._config['log_dir'] + 'exported_model/{}/'.format(global_step) + 'user_embeddings.json', 'w'))
-            json.dump(self._session_embeddings, open(
-                self._config['log_dir'] + 'exported_model/{}/'.format(global_step) + 'session_embeddings.json', 'w'))
+            export_dir = self._config['log_dir'] + 'exported_model/{}'.format(global_step)
+            if not os.path.exists(export_dir):
+                tf.saved_model.simple_save(
+                    self._sess,
+                    export_dir,
+                    inputs={
+                        "UserEmbeddings": self._ops.features.user_embeddings,
+                        "SessionEmbeddings": self._ops.features.session_embeddings,
+                        "SessionChanged": self._ops.features.session_changed,
+                        "EmbeddingId": self._ops.features.product_embedding_ids
+                    },
+                    outputs={
+                        "RankedPredictions": self._ops.ranked_predictions,
+                        "SessionEmbeddings": self._ops.session_embeddings
+                    }
+                )
+                json.dump(self._user_embeddings, open(
+                    self._config['log_dir'] + 'exported_model/{}/'.format(global_step) + 'user_embeddings.json', 'w'))
+                json.dump(self._session_embeddings, open(
+                    self._config['log_dir'] + 'exported_model/{}/'.format(global_step) + 'session_embeddings.json', 'w'))
 
     # TODO: Move to abstract class
     def predict(self, datapoint):
