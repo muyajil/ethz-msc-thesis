@@ -21,6 +21,43 @@
 \end{itemize}
 
 \section{Production Setup}
+Digitec Galaxus AG is the largest online-retailer in Switzerland.
+They operate galaxus.ch and digitec.ch. The former is a general online-shop comparable to Amazon. 
+The latter is specialized in Electronics.
+Distributed on the different sections of the site there are several recommendation engines populating the content the users see.
+Examples are the landing page\todo{Add screenshot} and multiple engines on the product detail page\todo{Add screenshot}.
+At the time of writing these engines were either recommending products or marketing pages. 
+\par
+Marketing Pages are a part of Digitec Galaxus' marketing strategy.
+There is a editorial team which is separated by a chinese wall from the product departement.
+This team writes independant reviews and other stories including current news.
+These pages give the customers a second reason to interact with the platform, by establishing themselves as a news platform for users.
+Therefore it makes sense to invest in recommendations of articles, since this allows the user to be familiar with the platform, and later preferring it for an online purchase.
+However due to the fact that there are few recommendation engines for articles, these pages are not considered in this work. 
+
+\subsection{Survival of the Fittest Framework}
+As mentioned above there are multiple locations, such as the product detail page, in which recommendation engines can display content.
+Moreover in each of these locations is it possible to have multiple spots which display content from recommendation engines.
+For example on the product detail page there are multple spots displaying recommendations.
+The Survival of the Fittest Framework is a system designed to decide which recommendation engine runs in which spot. \todo{Show an illustration for the framework}
+The framework is a way of tackling the exploration exploitation tradeoff.
+The definition which recommendation engine is allowed to be displayed in which spot is done manually, since not all combinations of the two make sense from a user experience perspective.
+In principle popular recommendation engines get a proportionally higher probability to be selected when such a page is accessed by a specific user, while maintaining some restrictions.
+This probability of being selected is defined as follows:\todo{Add specific formula}
+\[
+    p_{xij} = max(0.05, )
+\]
+Where $p_{xij}$ is the probability of recommendation engine $x$ being displayed on location $i$ and spot $j$.
+This probability is computed constantly, automatically based on a stream of user clicks.
+The Click-Through-Rate is the relevant metric for this computation because as described in~\ref{conversion_rate} this can only be estimated from the sales, since the true intent of the user cannot be reliably identified.
+Therefore less popular or new recommendation engines still can be selected to be displayed, allowing for exploration of different approaches.
+Should an engine become popular due to an improvement in the logic behind it, the probability of display increases automatically as more users interact with this element.
+
+\subsection{Integration of Session-based Recommendations}
+The implementation done during this work will represent one of the possible recommendation engines.
+There will be two possible locations for displaying the recommendations, specifically the landing page and the product detail page.
+The reason is that when a user starts a new session he or she will most likely start this session on the landing page or on a product detail page, coming from a search engine for example.\todo{Maybe add Google Analytics extract if allowed?}
+However to achieve some comparable numbers we have run sp
 \begin{itemize}
     \item Describe the flow of a recommendation through the system for the different cases
     \item Probably a sequence diagram makes most sense
