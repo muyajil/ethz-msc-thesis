@@ -29,8 +29,8 @@ thesis: thesis.pdf thesis.ps
 
 thesis.pdf: $(texfiles) thesis.bbl
 	$(Q) rm -rf build/pdf/; mkdir -p build/pdf/
-	$(Q) cd build/pdf/ && TEXINPUTS="../../:$$TEXINPUTS" $(Q_LATEX) $(PDFLATEX) -interaction=nonstopmode -file-line-error ../../thesis.tex
-	$(Q) cd build/pdf/ && TEXINPUTS="../../:$$TEXINPUTS" $(Q_LATEX) $(PDFLATEX) -interaction=nonstopmode -file-line-error ../../thesis.tex
+	$(Q) cd build/pdf/ && TEXINPUTS="../../:$$TEXINPUTS" $(Q_LATEX) $(PDFLATEX) --shell-escape -interaction=nonstopmode -file-line-error ../../thesis.tex
+	$(Q) cd build/pdf/ && TEXINPUTS="../../:$$TEXINPUTS" $(Q_LATEX) $(PDFLATEX) --shell-escape -interaction=nonstopmode -file-line-error ../../thesis.tex
 	$(Q) ln -f build/pdf/thesis.pdf thesis.pdf
 
 thesis.dvi: $(texfiles) thesis.bbl

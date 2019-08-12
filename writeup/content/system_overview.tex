@@ -15,9 +15,18 @@
 \end{itemize}
 
 \section{Implementation}
+
 \begin{itemize}
 \item Describe Class Diagram
 \item Describe prediction mode/training mode
+\item Describe problems that arose during training (extensive resources used for so many products and users)
+\end{itemize}
+\subsection{API}\label{api}
+As described above the model is implemented in Tensorflow\footnote{\url{http://tensorflow.org}}.
+Tensorflow provides a mechanism to export tensorflow models as so called SavedModel\footnote{\url{https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/saved_model/README.md}}, which is the way Tensorflow serializes models universally.
+They also provide a premade Docker image\footnote{\url{https://hub.docker.com/r/tensorflow/serving}} which allows the model to be served as a REST or GRPC API.
+\begin{itemize}
+\item Describe API
 \end{itemize}
 
 \section{Production Setup}
@@ -26,40 +35,47 @@ They operate galaxus.ch and digitec.ch. The former is a general online-shop comp
 The latter is specialized in Electronics.
 Distributed on the different sections of the site there are several recommendation engines populating the content the users see.
 Examples are the landing page\todo{Add screenshot} and multiple engines on the product detail page\todo{Add screenshot}.
-At the time of writing these engines were either recommending products or marketing pages. 
-\par
-Marketing Pages are a part of Digitec Galaxus' marketing strategy.
-There is a editorial team which is separated by a chinese wall from the product departement.
-This team writes independant reviews and other stories including current news.
-These pages give the customers a second reason to interact with the platform, by establishing themselves as a news platform for users.
-Therefore it makes sense to invest in recommendations of articles, since this allows the user to be familiar with the platform, and later preferring it for an online purchase.
-However due to the fact that there are few recommendation engines for articles, these pages are not considered in this work. 
+% At the time of writing these engines were either recommending products or marketing pages. 
+% \par
+% Marketing Pages are a part of Digitec Galaxus' marketing strategy.
+% There is a editorial team which is separated by a chinese wall from the product departement.
+% This team writes independant reviews and other stories including current news.
+% These pages give the customers a second reason to interact with the platform, by establishing themselves as a news platform for users.
+% Therefore it makes sense to invest in recommendations of articles, since this allows the user to be familiar with the platform, and later preferring it for an online purchase.
+% These pages are not considered in this work, however the model should be applicable to marketing pages as well. 
 
-\subsection{Survival of the Fittest Framework}
-As mentioned above there are multiple locations, such as the product detail page, in which recommendation engines can display content.
-Moreover in each of these locations is it possible to have multiple spots which display content from recommendation engines.
-For example on the product detail page there are multple spots displaying recommendations.
-The Survival of the Fittest Framework is a system designed to decide which recommendation engine runs in which spot. \todo{Show an illustration for the framework}
-The framework is a way of tackling the exploration exploitation tradeoff.
-The definition which recommendation engine is allowed to be displayed in which spot is done manually, since not all combinations of the two make sense from a user experience perspective.
-In principle popular recommendation engines get a proportionally higher probability to be selected when such a page is accessed by a specific user, while maintaining some restrictions.
-This probability of being selected is defined as follows:\todo{Add specific formula}
-\[
-    p_{xij} = max(0.05, )
-\]
-Where $p_{xij}$ is the probability of recommendation engine $x$ being displayed on location $i$ and spot $j$.
-This probability is computed constantly, automatically based on a stream of user clicks.
-The Click-Through-Rate is the relevant metric for this computation because as described in~\ref{conversion_rate} this can only be estimated from the sales, since the true intent of the user cannot be reliably identified.
-Therefore less popular or new recommendation engines still can be selected to be displayed, allowing for exploration of different approaches.
-Should an engine become popular due to an improvement in the logic behind it, the probability of display increases automatically as more users interact with this element.
+% \subsection{Survival of the Fittest Framework}
+% As mentioned above there are multiple locations, such as the product detail page, in which recommendation engines can display content.
+% Moreover in each of these locations is it possible to have multiple spots which display content from recommendation engines.
+% For example on the product detail page there are multple spots displaying recommendations.
+% The Survival of the Fittest Framework is a system designed to decide which recommendation engine runs in which spot. \todo{Show an illustration for the framework}
+% The framework is a way of tackling the exploration exploitation tradeoff.
+% The definition which recommendation engine is allowed to be displayed in which spot is done manually, since not all combinations of the two make sense from a user experience perspective.
+% In principle popular recommendation engines get a proportionally higher probability to be selected when such a page is accessed by a specific user, while maintaining some restrictions.
+% This probability of being selected is defined as follows:\todo{Add specific formula}
+% \[
+%     p_{xij} = max(0.05, )
+% \]
+% Where $p_{xij}$ is the probability of recommendation engine $x$ being displayed on location $i$ and spot $j$.
+% This probability is computed constantly, automatically based on a stream of user clicks.
+% The Click-Through-Rate is the relevant metric for this computation because as described in~\ref{conversion_rate} this can only be estimated from the sales, since the true intent of the user cannot be reliably identified.
+% Therefore less popular or new recommendation engines still can be selected to be displayed, allowing for exploration of different approaches.
+% Should an engine become popular due to an improvement in the logic behind it, the probability of display increases automatically as more users interact with this element.
 
-\subsection{Integration of Session-based Recommendations}
-The implementation done during this work will represent one of the possible recommendation engines.
-There will be two possible locations for displaying the recommendations, specifically the landing page and the product detail page.
-The reason is that when a user starts a new session he or she will most likely start this session on the landing page or on a product detail page, coming from a search engine for example.\todo{Maybe add Google Analytics extract if allowed?}
-However to achieve some comparable numbers we have run sp
-\begin{itemize}
-    \item Describe the flow of a recommendation through the system for the different cases
-    \item Probably a sequence diagram makes most sense
-    \item I.e. show how SOFI etc. plays into this whole thing
-\end{itemize}
+There is a framework that computes probabilities which specific recommendation engine provides the content for a specific location.
+Further the framework then chooses the content for each location based on the probabilities computed before.
+However to test the model implemented in this work this framework is bypassed by a A/B Testing engine.
+The specific tests and the test setup is described in~\ref{exp_setup}, for the understanding of the following it is enough to assume that some independant system is providing recommendation requests to the recommendation system.
+Using the API containers described in~\ref{api} we can serve these requests.
+The sequence-diagram in~\ref{fig:serving_recs} should give an overview on how the system is integrated in the production environment.
+
+\begin{figure}[H]
+	\centering
+	\captionsetup{width=0.8\textwidth}
+    \includegraphics[width=\textwidth]{serving-recommendations.eps}
+    \caption{Serving Recommendations on digitec.ch and galaxus.ch}
+    \label{fig:serving_recs}
+\end{figure}
+
+The whole process starts when a specific user requests a specific page on either digitec.ch or galaxus.ch.
+If the requested page has a an element which is configured to be populated by recommendation systems, the 

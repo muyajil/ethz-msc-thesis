@@ -12,6 +12,10 @@ import requests
 app = Flask('SessionBasedRecommendations')
 READY = False
 EMBEDDING_DICT = dict()
+USER_EMBEDDINGS = dict()
+PRODUCT_EMBEDDINGS = dict()
+SESSION_EMBEDDINGS = dict()
+MODEL_NAME = ''
 
 
 if __name__ != '__main__':
@@ -19,6 +23,20 @@ if __name__ != '__main__':
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
 
+
+def initialize_app():
+    global USER_EMBEDDINGS
+    global SESSION_EMBEDDINGS
+    global PRODUCT_EMBEDDINGS
+    global READY
+    global MODEL_NAME
+    MODEL_NAME = os.environ['MODEL_NAME']
+    if 'user' in MODEL_NAME:
+        USER_EMBEDDINGS = json.load(open('/session_recommendation/models/{}/1/user_embeddings.json'.format(MODEL_NAME)))
+    SESSION_EMBEDDINGS = json.load(open('/session_recommendation/models/{}/1/session_embeddings.json'.format(MODEL_NAME)))
+    if 'embedding' in MODEL_NAME:
+        PRODUCT_EMBEDDINGS = json.load(open('/session_recommendation/product_embeddings.json'))
+    READY = True
 
 @app.route('/Readiness/', methods=['GET'])
 def readiness():
@@ -40,6 +58,7 @@ def predict():
         user_id = request_data['userId']
         product_id = request_data['productId']
         session_start = request_data['sessionStart']
+        session_id = request_data['sessionId']
 
         if str(user_id) not in EMBEDDING_DICT['User']['ToEmbedding']:
             return (jsonify({
@@ -60,9 +79,11 @@ def predict():
             request_data['inputs'] = dict()
             request_data['inputs']['EmbeddingId'] = [EMBEDDING_DICT['Product']['ToEmbedding'][str(product_id)]]
             request_data['inputs']['SessionChanged'] = [session_start]
-            # TODO: Get Embeddings
-            request_data['inputs']['UserEmbeddings'] = []
-            request_data['inputs']['SessionEmbeddings'] = []
+            if 'embedding' in MODEL_NAME:
+                request_data['inputs']['ProductEmbeddings'] = PRODUCT_EMBEDDINGS[str(product_id)]
+            if 'user' in MODEL_NAME:
+                request_data['inputs']['UserEmbeddings'] = USER_EMBEDDINGS[str(user_id)]
+            request_data['inputs']['SessionEmbeddings'] = SESSION_EMBEDDINGS[str(session_id)]
 
             response = requests.post(
                 'http://localhost:8501/v1/models/session_recommendation:predict',
@@ -73,8 +94,7 @@ def predict():
 
             product_ids = map(lambda x: EMBEDDING_DICT['Product']['FromEmbedding'][str(x)], list(response['RankedPredictions']))
 
-            # TODO: Update Session Embeddings
-
+            SESSION_EMBEDDINGS[str(session_id)] = list(response['SessionEmbeddings'])[0]
             app.logger.info('Recommended {} to {}'.format(','.join(product_ids), user_id))
 
             return (jsonify({

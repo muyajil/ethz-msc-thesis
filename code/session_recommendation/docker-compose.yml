@@ -1,10 +1,10 @@
 version: "2"
 services:
   tf-serve:
-    image: tensorflow/serving:latest
+    image: eu.gcr.io/machinelearning-prod/tf-models:latest
     container_name: model
     environment:
-      - MODEL_NAME=session_recommendation
+      - MODEL_NAME=only_session_embedding
     volumes:
       - /home/muy/repositories/ethz-msc-thesis/code/session_recommendation/models:/models
     ports:

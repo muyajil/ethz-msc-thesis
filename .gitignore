@@ -15,4 +15,7 @@ artifacts/*
 *.pyc
 *.hdf
 !config.json
-code/session_recommendation/models/*
+code/session_recommendation/models/only_session/*
+code/session_recommendation/models/only_session_embedding/*
+code/session_recommendation/models/with_user/*
+code/session_recommendation/models/with_user_embedding/*
