@@ -31,8 +31,7 @@ def initialize_app():
     global READY
     global MODEL_NAME
     MODEL_NAME = os.environ['MODEL_NAME']
-    if 'user' in MODEL_NAME:
-        USER_EMBEDDINGS = json.load(open('/session_recommendation/models/{}/1/user_embeddings.json'.format(MODEL_NAME)))
+    USER_EMBEDDINGS = json.load(open('/session_recommendation/models/{}/1/user_embeddings.json'.format(MODEL_NAME)))
     SESSION_EMBEDDINGS = json.load(open('/session_recommendation/models/{}/1/session_embeddings.json'.format(MODEL_NAME)))
     if 'embedding' in MODEL_NAME:
         PRODUCT_EMBEDDINGS = json.load(open('/session_recommendation/product_embeddings.json'))
@@ -81,8 +80,7 @@ def predict():
             request_data['inputs']['SessionChanged'] = [session_start]
             if 'embedding' in MODEL_NAME:
                 request_data['inputs']['ProductEmbeddings'] = PRODUCT_EMBEDDINGS[str(product_id)]
-            if 'user' in MODEL_NAME:
-                request_data['inputs']['UserEmbeddings'] = USER_EMBEDDINGS[str(user_id)]
+            request_data['inputs']['UserEmbeddings'] = USER_EMBEDDINGS[str(user_id)]
             request_data['inputs']['SessionEmbeddings'] = SESSION_EMBEDDINGS[str(session_id)]
 
             response = requests.post(
