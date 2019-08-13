@@ -1,18 +1,23 @@
-version: "2"
+version: "3"
 services:
-  tf-serve:
+  tf-models:
+    build:
+      context: ../tf-models
     image: eu.gcr.io/machinelearning-prod/tf-models:latest
     container_name: model
     environment:
-      - MODEL_NAME=only_session_embedding
-    volumes:
-      - /home/muy/repositories/ethz-msc-thesis/code/session_recommendation/models:/models
+      - MODEL_NAME=${MODEL_NAME}
     ports:
       - "8500:8500"
       - "8501:8501"
 
-  # api:
-  #   image: eu.gcr.io/machinelearning-prod/session_recommendation_api:latest
-  #   container_name: api
-  #   ports:
-  #     - "5000:5000"
+  api:
+    build:
+      context: ./
+    image: eu.gcr.io/machinelearning-prod/session_recommendation:latest
+    container_name: api
+    environment:
+      - MODEL_NAME=${MODEL_NAME}
+      - DATASET_NAME=${DATASET}
+    ports:
+      - "5000:5000"
