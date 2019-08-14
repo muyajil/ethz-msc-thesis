@@ -26,7 +26,7 @@ Essentially the data stored in the Key-Value store is the sum of all events stor
 
 \section{Data Preparation}
 To be able to focus on the model implementation when implementing the model we want to prepare the data for congestion as far as possible.
-Therefore the extraction and preparation of the dataset is implemented separately.
+Therefore the extraction and preparation of the dataset is implemented separately from the model implementation.
 The process is very similary to the process described in~\cite{hierarchical}.
 \paragraph{Data Extraction}
 In the first step we extract the raw data from the data warehouse, selecting the following pieces of information: ProductId, LastLoggedInUserId, UserId, SessionId, User Agent, Timestamp.
@@ -146,4 +146,4 @@ To illustrate these batches lets assume that there are 4 users with the sessions
 In principle a batch of size $x$ will contain an event from $x$ different users.
 Essentially the labels are the event that happens after the input event.
 \\
-The data representation shown in 
+The data representation shown in listing~\ref{code:user-events} explicitly to enable efficient generation of user parallel batches.
