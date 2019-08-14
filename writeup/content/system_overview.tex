@@ -1,12 +1,12 @@
 \chapter{System Overview}
 
-\section{Model Architecture}
+\section{Model Architecture}\label{model_arch}
 \begin{itemize}
 \item Describe Model Architecture
 \item Describe different Components of Model Architecture
 \item Describe different variants of the model (with/without pf, with/without embeddings)
 \end{itemize}
-
+\subsection{Model training}
 \section{Product Embedding}
 \begin{itemize}
     \item Describe the Architecture of MetaProd2Vec
@@ -63,19 +63,27 @@ Examples are the landing page\todo{Add screenshot} and multiple engines on the p
 % Should an engine become popular due to an improvement in the logic behind it, the probability of display increases automatically as more users interact with this element.
 
 There is a framework that computes probabilities which specific recommendation engine provides the content for a specific location.
-Further the framework then chooses the content for each location based on the probabilities computed before.
-However to test the model implemented in this work this framework is bypassed by a A/B Testing engine.
+Further the framework then chooses the content for each location based on the probabilities computed before and some other constraints such as minimum and maximum value.
+However to test the model implemented in this work this framework is bypassed by a A/B Testing engine, therefore this framework is not part of this work.
 The specific tests and the test setup is described in~\ref{exp_setup}, for the understanding of the following it is enough to assume that some independant system is providing recommendation requests to the recommendation system.
 Using the API containers described in~\ref{api} we can serve these requests.
-The sequence-diagram in~\ref{fig:serving_recs} should give an overview on how the system is integrated in the production environment.
+The sequence-diagram in figure~\ref{fig:serving_recs} should give an overview on how the system is integrated in the production environment.
 
 \begin{figure}[H]
 	\centering
 	\captionsetup{width=0.8\textwidth}
-    \includegraphics[width=\textwidth]{serving-recommendations.eps}
+    \includegraphics[width=\textwidth]{serving-recommendations.png}
     \caption{Serving Recommendations on digitec.ch and galaxus.ch}
     \label{fig:serving_recs}
 \end{figure}
 
 The whole process starts when a specific user requests a specific page on either digitec.ch or galaxus.ch.
-If the requested page has a an element which is configured to be populated by recommendation systems, the 
+If the requested page has an element where there is an A/B test configured the Online-Shop Application will make a request to the testing engine.
+As mentioned above the testing engine will then make a request to a API location, which corresponds to one of the model versions.
+After that the Online Shop will request the content, in this case, from the Personalization Infrastructure.
+Note that during this setup each of the four versions of the model is deployed simultaneously, all of them trained on the same dataset.
+The Personalization Infrastructure then calls the API described above.
+Before requesting a prediction from tf-serve the API will gather precomputed embeddings for the involved entities.
+The predictions are returned to the Personalization Infrastructure and from there to the Online Shop.
+The last step is for the Online Shop to render the content and deliver the page to the user.
+This process takes about XXms\todo{Get ms number here}ms.
