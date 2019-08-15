@@ -77,15 +77,12 @@ for config in configs:
     possible_models = [x.replace(source_path_base, '') for x in possible_models]
     possible_models = [int(x.split('/')[0]) for x in possible_models]
     latest_model = max(possible_models)
-    
+
     source_path_base += str(latest_model) + '/'
 
     target_path_base = 'gs://ma-muy/04_model_artifacts/'
-    if config['variant'] == 'embedding':
-        target_path_base += config['type'] + '_embedding/1/'
-    else:
-        target_path_base += config['type'] + '/1/'
-    
+    target_path_base += config['type'] + '_' + config['variant'] + '/1/'
+
     for source_path in get_paths_with_prefix(source_path_base):
         target_path = source_path.replace(source_path_base, target_path_base)
         print('Copying {} to {}'.format(source_path, target_path))

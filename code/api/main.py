@@ -66,6 +66,14 @@ def predict():
     app.logger.info('Started prediction')
     if request.headers["Content-Type"] == 'application/json':
         request_data = request.get_json()
+
+        if 'userId' not in request_data:
+            return (jsonify({
+                "error": {
+                    "code": 404,
+                    "message": "No userId supplied"
+                }}), 404)
+
         user_id = request_data['userId']
         product_id = request_data['productId']
         session_start = request_data['sessionStart']
@@ -74,16 +82,16 @@ def predict():
         if str(user_id) not in EMBEDDING_DICT['User']['ToEmbedding']:
             return (jsonify({
                 "error": {
-                    "code": 404,
+                    "code": 204,
                     "message": "User is not supported"
-                }}), 404)
+                }}), 204)
 
         if str(product_id) not in EMBEDDING_DICT['Product']['ToEmbedding']:
             return (jsonify({
                 "error": {
-                    "code": 404,
+                    "code": 204,
                     "message": "Product is not supported"
-                }}), 404)
+                }}), 204)
 
         else:
             request_data = dict()

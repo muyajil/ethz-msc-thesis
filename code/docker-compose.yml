@@ -2,7 +2,7 @@ version: "3"
 services:
   tf-models:
     build:
-      context: ../tf-models
+      context: ./tf-models
     image: eu.gcr.io/machinelearning-prod/tf-models:latest
     container_name: model
     environment:
@@ -13,7 +13,7 @@ services:
 
   api:
     build:
-      context: ./
+      context: ./api
     image: eu.gcr.io/machinelearning-prod/session_recommendation:latest
     container_name: api
     environment:
