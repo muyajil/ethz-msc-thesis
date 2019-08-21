@@ -28,6 +28,9 @@ spec:
           env:
             - name: MODEL_NAME
               value: {{ .Values.modelName }}
+          resources:
+            requests:
+              memory: {{ .Values.modelsMemory }}
           ports:
             - protocol: TCP
               containerPort: 8501
@@ -43,7 +46,7 @@ spec:
               value: maxi_dataset
           resources:
             requests:
-              memory: "7.5Gi"
+              memory: {{ .Values.apiMemory }}
           ports:
             - protocol: TCP
               containerPort: 5000

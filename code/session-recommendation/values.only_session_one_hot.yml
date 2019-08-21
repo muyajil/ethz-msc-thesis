@@ -1,2 +1,4 @@
 appName: onlysessiononehot
 modelName: only_session_one_hot
+modelsMemory: "6Gi"
+apiMemory: "12Gi"

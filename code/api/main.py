@@ -97,14 +97,16 @@ def predict():
             request_data = dict()
             request_data['inputs'] = dict()
             request_data['inputs']['EmbeddingId'] = [EMBEDDING_DICT['Product']['ToEmbedding'][str(product_id)]]
-            request_data['inputs']['SessionChanged'] = [session_start]
+            
             if 'embedding' in MODEL_NAME:
                 request_data['inputs']['ProductEmbeddings'] = [PRODUCT_EMBEDDINGS[str(product_id)]]
             request_data['inputs']['UserEmbeddings'] = [USER_EMBEDDINGS[str(user_id)]]
             if str(session_id) in SESSION_EMBEDDINGS:
                 request_data['inputs']['SessionEmbeddings'] = [SESSION_EMBEDDINGS[str(session_id)]]
+                request_data['inputs']['SessionChanged'] = [False]
             else:
                 request_data['inputs']['SessionEmbeddings'] = [np.random.normal(size=(100)).tolist()]
+                request_data['inputs']['SessionChanged'] = [True]
 
             response = requests.post(
                 'http://localhost:8501/v1/models/{}:predict'.format(MODEL_NAME),
