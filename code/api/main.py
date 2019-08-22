@@ -25,10 +25,13 @@ if __name__ != '__main__':
 
 
 def initialize_app():
+    global READY
+    if os.environ['GCP_PROJECT_ID'] == 'dg-dev-personalization':
+        READY = True
+        return
     global USER_EMBEDDINGS
     global SESSION_EMBEDDINGS
     global PRODUCT_EMBEDDINGS
-    global READY
     global MODEL_NAME
     global EMBEDDING_DICT
     MODEL_NAME = os.environ['MODEL_NAME']
@@ -63,6 +66,11 @@ def home():
 
 @app.route('/predict/', methods=['POST'])
 def predict():
+    if os.environ['GCP_PROJECT_ID'] == 'dg-dev-personalization':
+        return (jsonify({
+                'predictions': [11618860, 11483749, 11301570, 11259683, 11471398, 11252925, 11321784, 11488128, 11766227, 11273549]
+                }), 200)
+
     app.logger.info('Started prediction')
     if request.headers["Content-Type"] == 'application/json':
         request_data = request.get_json()
@@ -76,7 +84,6 @@ def predict():
 
         user_id = request_data['userId']
         product_id = request_data['productId']
-        session_start = request_data['sessionStart']
         session_id = request_data['sessionId']
 
         if str(user_id) not in EMBEDDING_DICT['User']['ToEmbedding']:
