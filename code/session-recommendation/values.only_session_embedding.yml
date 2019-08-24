@@ -1,4 +1,0 @@
-appName: onlysessionembedding
-modelName: only_session_embedding
-modelsMemory: "1Gi"
-apiMemory: "7.5Gi"

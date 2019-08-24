@@ -1,0 +1,6 @@
+appName: onlysessiononehot
+modelName: none
+modelsMemory: 10Mi
+apiMemory: 10Mi
+gcpProject: dg-dev-personalization
+modelSize: 250

@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.appName }}
+  name: {{ quote .Values.appName }}
   namespace: session-recommendation
   labels:
-    app: {{ .Values.appName }}
+    app: {{ quote .Values.appName }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: {{ .Values.appName }}
+      app: {{ quote .Values.appName }}
   template:
     metadata:
       labels:
-        app: {{ .Values.appName }}
+        app: {{ quote .Values.appName }}
     spec:
       tolerations:
       - key: "machine-type"
@@ -27,10 +27,10 @@ spec:
           image: eu.gcr.io/machinelearning-prod/tf-models:latest
           env:
             - name: MODEL_NAME
-              value: {{ .Values.modelName }}
+              value: {{ quote .Values.modelName }}
           resources:
             requests:
-              memory: {{ .Values.modelsMemory }}
+              memory: {{ quote .Values.modelsMemory }}
           ports:
             - protocol: TCP
               containerPort: 8501
@@ -40,13 +40,17 @@ spec:
           imagePullPolicy: Always
           image: eu.gcr.io/machinelearning-prod/session_recommendation:latest
           env:
+            - name: GCP_PROJECT_ID
+              value: {{ quote .Values.gcpProject }}
             - name: MODEL_NAME
-              value: {{ .Values.modelName }}
+              value: {{ quote .Values.modelName }}
             - name: DATASET
               value: maxi_dataset
+            - name: MODEL_SIZE
+              value: {{ quote .Values.modelSize }}
           resources:
             requests:
-              memory: {{ .Values.apiMemory }}
+              memory: {{ quote .Values.apiMemory }}
           ports:
             - protocol: TCP
               containerPort: 5000
@@ -62,12 +66,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-    name: {{ .Values.appName }}
+    name: {{ quote .Values.appName }}
     namespace: session-recommendation
 spec:
   type: NodePort
   selector:
-    app: {{ .Values.appName }}
+    app: {{ quote .Values.appName }}
   ports:
     - protocol: TCP
       port: 80

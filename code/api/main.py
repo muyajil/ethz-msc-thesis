@@ -16,6 +16,7 @@ PRODUCT_EMBEDDINGS = dict()
 SESSION_EMBEDDINGS = dict()
 MODEL_NAME = ''
 MODEL_ARTIFACST_BASE = 'gs://ma-muy/04_model_artifacts/'
+DEV_PROJECT_ID = 'dg-dev-personalization'
 
 
 if __name__ != '__main__':
@@ -26,7 +27,8 @@ if __name__ != '__main__':
 
 def initialize_app():
     global READY
-    if os.environ['GCP_PROJECT_ID'] == 'dg-dev-personalization':
+    app.logger.info('Project ID set: {}'.format(os.environ['GCP_PROJECT_ID']))
+    if os.environ['GCP_PROJECT_ID'] == DEV_PROJECT_ID:
         READY = True
         return
     global USER_EMBEDDINGS
@@ -66,12 +68,12 @@ def home():
 
 @app.route('/predict/', methods=['POST'])
 def predict():
-    if os.environ['GCP_PROJECT_ID'] == 'dg-dev-personalization':
+    if os.environ['GCP_PROJECT_ID'] == DEV_PROJECT_ID:
         return (jsonify({
                 'predictions': [11618860, 11483749, 11301570, 11259683, 11471398, 11252925, 11321784, 11488128, 11766227, 11273549]
                 }), 200)
 
-    app.logger.info('Started prediction')
+    app.logger.info('Started prediction request: {}'.format(request.get_json()))
     if request.headers["Content-Type"] == 'application/json':
         request_data = request.get_json()
 
@@ -112,7 +114,7 @@ def predict():
                 request_data['inputs']['SessionEmbeddings'] = [SESSION_EMBEDDINGS[str(session_id)]]
                 request_data['inputs']['SessionChanged'] = [False]
             else:
-                request_data['inputs']['SessionEmbeddings'] = [np.random.normal(size=(100)).tolist()]
+                request_data['inputs']['SessionEmbeddings'] = [np.random.normal(size=(int(os.environ['MODEL_SIZE']))).tolist()]
                 request_data['inputs']['SessionChanged'] = [True]
 
             response = requests.post(
@@ -121,6 +123,7 @@ def predict():
             )
 
             response = json.loads(response.text)
+            app.logger.info(json.dumps(response))
             product_ids = list(map(lambda x: EMBEDDING_DICT['Product']['FromEmbedding'][str(x)], list(response['outputs']['RankedPredictions'][0])))
 
             SESSION_EMBEDDINGS[str(session_id)] = response['outputs']['SessionEmbeddings'][0]
