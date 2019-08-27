@@ -1,6 +1,6 @@
 appName: withuserembedding
 modelName: with_user_embedding
 modelsMemory: 1Gi
-apiMemory: 7.5Gi
+apiMemory: 12Gi
 gcpProject: dg-prod-personalization
 modelSize: 100

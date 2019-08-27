@@ -1,5 +1,6 @@
 FROM python:3.6 AS build-env
 
+RUN pip3 install --upgrade pip
 RUN pip3 install https://storage.googleapis.com/dg-ml-packages/dg_ml_core.tar.gz
 RUN pip3 install google-cloud-storage
 
