@@ -17,4 +17,4 @@ RUN pip install https://storage.googleapis.com/dg-ml-packages/dg_ml_core.tar.gz
 
 ADD . /session_recommendation
 
-ENTRYPOINT ["gunicorn", "--preload", "--log-level", "INFO", "--timeout", "60", "--chdir", "/session_recommendation", "--bind", "0.0.0.0:5000", "wsgi:app"]
+ENTRYPOINT ["gunicorn", "--workers", "6", "--preload", "--log-level", "INFO", "--timeout", "60", "--chdir", "/session_recommendation", "--bind", "0.0.0.0:5000", "wsgi:app"]

@@ -73,48 +73,62 @@ The assumption is that a user likes to see items that are similar to each other 
 However this method can also be used in different contexts, such as online-shopping, where the "content" of an item might be its textual description or an image of the actual product.
 \subsection{Well-Known Examples}
 In the following sections we will look at some well-known examples of recommendation engines and their properties.
-\subsubsection{Collaborative Filtering via SVD}
+\subsubsection{Collaborative Filtering via Matrix Factorization}
 As the name suggests model is a collaborative approach to a recommendation engine, meaning the model uses primarily interaction data between users and items.
 As mentioned in~\cite{intro_recsys} the main idea behind collaborative filtering is to recommend items to the user based on what users with similar taste liked in the past.
-Collaborative filtering refers to a class of models that use similar users' tastes to recommend items, making it a user-based recommendation system.
-The most popular way of implementing this model is by interpreting it as a matrix completion problem.\cite{matrix_comp_als}
-\begin{itemize}
-    \item Collaborative Filtering
-    \item Content-based Filtering
-    \item Often Bought Together
-\end{itemize}
+Collaborative filtering refers to a class of models that use similar users' tastes to recommend items.
+Also this class of models uses the user as a basis for recommendations and not the active item, making it a user-based recommendation system.
+As seen in~\cite{collaborative_filtering} there are many ways of implementing a collaborative filtering system.
+However the important part is the problem representation.
+
+\begin{figure}[ht]
+	\centering
+	\captionsetup{width=0.8\textwidth}
+    \includegraphics[width=\textwidth]{collaborative_filtering.png}
+    \caption{Matrix Completion via Matrix Factorization}
+    \label{fig:collaborative_filtering}
+\end{figure}
+In the Model-Based approach the problem is represented as a matrix completion problem.
+The matrix $R$ in figure~\ref{fig:collaborative_filtering} represents the interactions of users and items, where $u_{ij}$ represents the interaction of user $i$ with item $j$.
+Usually when dealing with such interaction data, this matrix is very sparse, since in general a user interacts with a small set out of possibly millions of items.
+The main idea behind this approach is to fill in the missing entries of the matrix.
+To achieve that we define two randomly initialized matrices $U$ and $V$ which when multiplied produce a matrix of the same shape as $U$.
+As explained in~\cite{collaborative_filtering} these two matrices represent low rank representations of users and items respectively.
+The next step is to use a optimization algorithm to fit $U$ and $V$ such that $r_{ij} \approx UV_{ij}$.
+The error of the chosen optimization algorithm however is only applied to entries of $R$ which are known.
+Therefore when we find $U$ and $V$ such that the values for the known entries match the values in $R$ we assume that we also found a good approximation for the values unkown in $R$ and use these to predict the interaction of the respective users and items.
+
+\subsubsection{Often Bought Together}
+Often/frequently bought together is a recommendation system very popular in online-stores.
+The idea behind it is to recommend products that complement the one the user is intending to buy.
+A classical example for this would be to recommend a protection case when the users adds a smartphone to the basket.
+Therefore it is a item-based approach.
+The implementation of this recommendation system can be done in a rather simple way, but can be improved a lot by complex systems, which could personalize the recommendations by using the users history, thereby extending it with a user-based component.
+However the basic idea stays the same, as the name suggests, finding items that are frequently bought together.
+The simplest, yet still effective, implementation of this is to just count how many times products appear in the same order as other products, i.e. for each combination of two products $i$ and $j$ we will have a count $c_{ij}$ of how many times these products were bought together.
+When a user adds a product to the basket, we extract the products with the highest count from a database and recommend these to users.
 
 \section{Concepts}
 \subsection{Recurrent Neural Networks}\label{rnn}
+Recurrent Neural Networks or RNNs are a form of artificial neural networks, which allow to model sequence input data.
+The enabling factor for this is that RNNs allow the output of the network to be fed back in.\todo{Add RNN illustration}.
+Further RNNs carry a so called hidden state, which is propagated along the temporal axis.
+The following equation describes the general behaviour of a simple RNN.
+\[
+    
+\]
 \begin{itemize}
     \item Explain the concept of neural Networks
     \item What are the problems (vanishing gradients etc)
     \item Explain what a GRU is and why does it handle vanishing gradient better than simple RNN cells?
     \item How does a layered RNN work?
 \end{itemize}
-\subsection{Generative Adversarial Network Framework}
+\subsection{Embeddings of categorical data}
 \begin{itemize}
-    \item Explain the way GANs work
-    \item Loss function is learnable
-    \item The discriminator is part of the loss function
-    \item Especially good if we want generate stuff
-\end{itemize}
-\subsection{Teacher Forcing}
-\begin{itemize}
-    \item RNN have two modes: Teacher forced and Free running
-    \item When training we always use the ground truth as input
-    \item This generates two different distributions of hidden states, which in turn generates two different distributions for the output
-    \item This is a problem since this makes RNNs in production less predictable
+    \item Why, how does it work
 \end{itemize}
 
 \section{Previous Work}
-\subsection{Professor Forcing}
-\begin{itemize}
-    \item Here we want to mitigate the teacher forcing problem, by applying the gan framework
-    \item Add graphic showing how it should work
-    \item Describe the model as we did in the slides, show the loss function
-\end{itemize}
-\cite{profforce}
 \subsection{Meta-Prod2Vec}
 \begin{itemize}
     \item This is a model that allows us to capture the semantic similarity between products

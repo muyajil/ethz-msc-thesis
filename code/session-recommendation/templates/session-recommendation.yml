@@ -38,7 +38,7 @@ spec:
         # [START session-recommendation]
         - name: session-recommendation
           imagePullPolicy: Always
-          image: eu.gcr.io/machinelearning-prod/session_recommendation:latest
+          image: eu.gcr.io/machinelearning-prod/session_recommendation:1
           env:
             - name: GCP_PROJECT_ID
               value: {{ quote .Values.gcpProject }}
