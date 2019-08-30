@@ -154,7 +154,7 @@ This behaviour of this network is described by the following equations.
 \begin{equation}\label{eq:4}
     y' = \sigma_y(w_{y}^Th)
 \end{equation}
-Each individual cell has a weight vector associated with it denoted by $w_y$ in the example of the output unit.
+Each individual cell has a weight vector associated with it denoted by $w_o$ where $o$ is the respective cell.
 The arrows in the illustration represent the individual weights of such a weight vector.
 Further each layer has an nonlinear activation function associated with it, denoted by $\sigma_l$, $l$ being the respective layer.
 \par
@@ -174,13 +174,15 @@ Now we assume we compute the estimation $y'_t$, i.e. the output of timestep $t$.
 As we can see in the equations~\ref{eq:1} and~\ref{eq:2} this output is also influenced by all the previous timesteps.
 The problem now arises from the so called recurrent weights denoted by $W^{hh}$, those connecting the units across the temporal axis.
 For now we assume that the weights are small, i.e. $|w_{ij}| < 1$ for $w_{ij} \in W^{hh}$.
+Since the weights are small, the contribution of input $x_{t-k}$ to the output $y'_t$ gets exponentially smaller with increasing $k$.
+Essentially by computing the gradient with respect to the input the afromentioned contribution is quantified.
+Therefore when $k$ gets large and the contribution of the input $x_{t-k}$ vanishes, the gradient with respect to the input unit also vanishes, resulting in the so called vanishing gradient problem.
+The opposite happens when the recurrent weights are large, i.e. $|w_{ij}| > 1$ for $w_{ij} \in W^{hh}$.
+In this case the contribution gets amplified when $k$ gets large, and therefore we would be dealing with exploding gradients.
+This is a problem in a setting where we want to learn long-range dependencies, which is often the case in sequence modeling.
+
 \subsubsection{Gated Recurrent Unit}
 The Gated Recurrent Unit (GRU) is a recurrent unit which aims to solve the exploding/vanishing gradients problem mentioned above.
-\begin{itemize}
-    \item Explain the concept of recurrent neural Networks
-    \item What are the problems (vanishing gradients etc)
-    \item Explain what a GRU is and why does it handle vanishing gradient better than simple RNN cells?
-\end{itemize}
 \subsection{Embeddings of categorical data}
 \begin{itemize}
     \item What is the problem with categorical data?
