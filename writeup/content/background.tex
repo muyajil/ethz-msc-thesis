@@ -14,9 +14,9 @@ The semantic meaning of a score depends on the objective of a recommendation sys
 For example a system which recommends products to be bought might assign a "probability of purchase", whereas a system which recommends videos might predict the probability of a user watching a video to the end. 
 \\
 Bringing this all together we can define a general recommendation system with the following function:
-\[
+\begin{equation}\label{eq:0}
     s = f(i, u, h_u)
-\]
+\end{equation}
 Where $s$ is the assigned score to item $i$ for the user $u$ and the users history $u_h$. 
 The users history represents all the previous interactions with items.
 Essentially when we design a recommendation engine we want to learn the function $f$.
@@ -88,6 +88,7 @@ However the important part is the problem representation.
     \caption{Matrix Completion via Matrix Factorization}
     \label{fig:collaborative_filtering}
 \end{figure}
+
 In the Model-Based approach the problem is represented as a matrix completion problem.
 The matrix $R$ in figure~\ref{fig:collaborative_filtering} represents the interactions of users and items, where $u_{ij}$ represents the interaction of user $i$ with item $j$.
 Usually when dealing with such interaction data, this matrix is very sparse, since in general a user interacts with a small set out of possibly millions of items.
@@ -110,13 +111,71 @@ When a user adds a product to the basket, we extract the products with the highe
 
 \section{Concepts}
 \subsection{Recurrent Neural Networks}\label{rnn}
-Recurrent Neural Networks or RNNs are a form of artificial neural networks, which allow to model sequence input data.
-The enabling factor for this is that RNNs allow the output of the network to be fed back in.\todo{Add RNN illustration}.
+Recurrent Neural Networks or RNNs are a form of artificial neural networks, which allow to explicitly model sequence input data.
+The enabling factor for this is that RNNs allow the output of the network to be fed back in.
+
+\begin{figure}[ht]
+	\centering
+	\captionsetup{width=0.8\textwidth}
+    \includegraphics[width=\textwidth]{rnn.png}
+    \caption{Recurrent Neural Network}
+    \label{fig:rnn}
+\end{figure}
+
 Further RNNs carry a so called hidden state, which is propagated along the temporal axis.
-The following equation describes the general behaviour of a simple RNN.
-\[
-    
-\]
+The following two equations from~\cite{rnn_survey} describe the general behaviour of a simple RNN unit as illustrated in figure~\ref{fig:rnn}.
+\begin{equation}\label{eq:1}
+    h_{i+1} = \sigma(W^{hx}x_i + W^{hh}h_i + b_h)
+\end{equation}
+\begin{equation}\label{eq:2}
+    y'_i = \text{softmax}(W^{yh}h_i + b_y)
+\end{equation}
+We can see in equation~\ref{eq:1} how the hidden state is carried over.
+This equation represents the connections across the temporal axis mentioned above.
+Figure~\ref{fig:rnn} shows how the sequence input denoted by $x$ is unfolded and fed into the network one timestep at a time.
+For each timestep the corresponding output is computed as well as the hidden state that is carried over to the next timestep.
+Intuitively the hidden state can be seen as the variable holding the relevant information from the previous steps to influence the prediction of the next step.
+\subsubsection{Backpropagation}
+Backpropagation is the technique used to train neural networks.
+
+\begin{figure}[ht]
+	\centering
+	\captionsetup{width=0.8\textwidth}
+    \includegraphics[width=0.8\textwidth]{ffnn.png}
+    \caption{Feedforward Neural Network}
+    \label{fig:ffnn}
+\end{figure}
+
+Let us assume we have a simple feedforward neural network as shown in figure~\ref{fig:ffnn}.
+This behaviour of this network is described by the following equations.
+\begin{equation}\label{eq:3}
+    h_i = \sigma_h(w_{h_i}^Tx)
+\end{equation}
+\begin{equation}\label{eq:4}
+    y' = \sigma_y(w_{y}^Th)
+\end{equation}
+Each individual cell has a weight vector associated with it denoted by $w_y$ in the example of the output unit.
+The arrows in the illustration represent the individual weights of such a weight vector.
+Further each layer has an nonlinear activation function associated with it, denoted by $\sigma_l$, $l$ being the respective layer.
+\par
+In this setting we usually are in a supervised mode, where for each input $x$ there is a true label $y$.
+Using the neural network we estimate $y$ for a given $x$ by applying the equations above to obtain the estimation $y'$.
+\par
+The last component needed before training is possible is a loss function $\mathcal{L}(y, y')$, which quantifies the error of the estimation $y'$.
+\par
+The basic idea of backpropagation is to attribute parts of the error computed to the different units of the network, and therefore make adjustements to the weight vector of a particular unit.
+As described in~\cite{rnn_survey} this is done by using the chain rule to compute the derivative of $\mathcal{L}(y, y')$ with respect to each weight vector.
+The weight vector is then adjusted by gradient descent, i.e. by moving the vector in the direction of the largest decrease in the gradient.
+There are more parameters involved such as the learning rate, which defines how much in the direction of the gradient the weights are adjusted, however these are not needed for understanding the principle.
+\subsubsection{Backpropagation with RNNs}
+Also in~\cite{rnn_survey} the authors mention that training RNNs has been known to be especially difficult due to the \emph{vanishing} or \emph{exploding gradients} problem.
+As an example we consider the RNN in figure~\ref{fig:rnn}.
+Now we assume we compute the estimation $y'_t$, i.e. the output of timestep $t$.
+As we can see in the equations~\ref{eq:1} and~\ref{eq:2} this output is also influenced by all the previous timesteps.
+The problem now arises from the so called recurrent weights denoted by $W^{hh}$, those connecting the units across the temporal axis.
+For now we assume that the weights are small, i.e. $|w_{ij}| < 1$ for $w_{ij} \in W^{hh}$.
+\subsubsection{Gated Recurrent Unit}
+The Gated Recurrent Unit (GRU) is a recurrent unit which aims to solve the exploding/vanishing gradients problem mentioned above.
 \begin{itemize}
     \item Explain the concept of recurrent neural Networks
     \item What are the problems (vanishing gradients etc)
