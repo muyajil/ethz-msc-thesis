@@ -14,7 +14,7 @@ The semantic meaning of a score depends on the objective of a recommendation sys
 For example a system which recommends products to be bought might assign a "probability of purchase", whereas a system which recommends videos might predict the probability of a user watching a video to the end. 
 \\
 Bringing this all together we can define a general recommendation system with the following function:
-\begin{equation}\label{eq:0}
+\begin{equation}\label{eq:recommendation_system}
     s = f(i, u, h_u)
 \end{equation}
 Where $s$ is the assigned score to item $i$ for the user $u$ and the users history $u_h$. 
@@ -124,17 +124,20 @@ The enabling factor for this is that RNNs allow the output of the network to be 
 
 Further RNNs carry a so called hidden state, which is propagated along the temporal axis.
 The following two equations from~\cite{rnn_survey} describe the general behaviour of a simple RNN unit as illustrated in figure~\ref{fig:rnn}.
-\begin{equation}\label{eq:1}
+\begin{equation}\label{eq:rnn_hidden_state}
     h_{i+1} = \sigma(W^{hx}x_i + W^{hh}h_i + b_h)
 \end{equation}
-\begin{equation}\label{eq:2}
+\begin{equation}\label{eq:rnn_output}
     y'_i = \text{softmax}(W^{yh}h_i + b_y)
 \end{equation}
-We can see in equation~\ref{eq:1} how the hidden state is carried over.
+We can see in equation~\ref{eq:rnn_hidden_state} how the hidden state is carried over.
 This equation represents the connections across the temporal axis mentioned above.
 Figure~\ref{fig:rnn} shows how the sequence input denoted by $x$ is unfolded and fed into the network one timestep at a time.
 For each timestep the corresponding output is computed as well as the hidden state that is carried over to the next timestep.
 Intuitively the hidden state can be seen as the variable holding the relevant information from the previous steps to influence the prediction of the next step.
+\par
+For clarification purposes it is important to note that the individual inputs $x_t$ represent a datapoint in a sequence denoted by $x$, therefore in most cases are represented by a vector.
+In a feedforward neural network as illustrated in figure~\ref{fig:ffnn}, the inputs $x_i$ represent individual entries in the feature vector of the datapoint $x$.
 \subsubsection{Backpropagation}
 Backpropagation is the technique used to train neural networks.
 
@@ -148,10 +151,10 @@ Backpropagation is the technique used to train neural networks.
 
 Let us assume we have a simple feedforward neural network as shown in figure~\ref{fig:ffnn}.
 This behaviour of this network is described by the following equations.
-\begin{equation}\label{eq:3}
+\begin{equation}\label{eq:ffnn_hidden_layer}
     h_i = \sigma_h(w_{h_i}^Tx)
 \end{equation}
-\begin{equation}\label{eq:4}
+\begin{equation}\label{eq:ffnn_output}
     y' = \sigma_y(w_{y}^Th)
 \end{equation}
 Each individual cell has a weight vector associated with it denoted by $w_o$ where $o$ is the respective cell.
@@ -171,7 +174,7 @@ There are more parameters involved such as the learning rate, which defines how 
 Also in~\cite{rnn_survey} the authors mention that training RNNs has been known to be especially difficult due to the \emph{vanishing} or \emph{exploding gradients} problem.
 As an example we consider the RNN in figure~\ref{fig:rnn}.
 Now we assume we compute the estimation $y'_t$, i.e. the output of timestep $t$.
-As we can see in the equations~\ref{eq:1} and~\ref{eq:2} this output is also influenced by all the previous timesteps.
+As we can see in the equations~\ref{eq:1} and~\ref{eq:rnn_output} this output is also influenced by all the previous timesteps.
 The problem now arises from the so called recurrent weights denoted by $W^{hh}$, those connecting the units across the temporal axis.
 For now we assume that the weights are small, i.e. $|w_{ij}| < 1$ for $w_{ij} \in W^{hh}$.
 Since the weights are small, the contribution of input $x_{t-k}$ to the output $y'_t$ gets exponentially smaller with increasing $k$.
@@ -182,21 +185,114 @@ In this case the contribution gets amplified when $k$ gets large, and therefore 
 This is a problem in a setting where we want to learn long-range dependencies, which is often the case in sequence modeling.
 
 \subsubsection{Gated Recurrent Unit}
-The Gated Recurrent Unit (GRU) is a recurrent unit which aims to solve the exploding/vanishing gradients problem mentioned above.
-\subsection{Embeddings of categorical data}
-\begin{itemize}
-    \item What is the problem with categorical data?
-    \item What is an embedding, what is the goal?
-    \item How can we compute embeddings?
-\end{itemize}
+The Gated Recurrent Unit (GRU) is a recurrent unit which aims to solve the exploding or vanishing gradients problem mentioned above.
+This is achieved by modifying the behaviour of the hidden units, in between which the recurrent edges of the network are.
+The authors of~\cite{gru} introduced this new type of recurrent unit.
+They retrofitted the recurrent unit with the ability to adaptively remember and forget.
+This is achieved using two gates: The \emph{reset} and \emph{update} gate.
+\par
+The reset gate is responsible to supress features of the hidden state that were learned to be not important in the future.
+The reset gate is computed using the following formula:
+\begin{equation}\label{eq:gru_reset_gate}
+    r_t = \sigma( W_rx + U_rh_{t-1} + b_r)
+\end{equation}
+The matrices $W_r$ and $U_r$ and the bias $b_r$ are parameters specific to the reset gate and are learned simultaneously with backpropagation.
+\par
+The update gate controls how much information is propagated from the previous hidden state to the next one, i.e. it learns which features of the previous hidden state will be how important in the future.
+The update gate is computed as follows:
+\begin{equation}\label{eq:gru_update_gate}
+    z_t = \sigma( W_zx + U_zh_{t-1} + b_z)
+\end{equation}
+Again the weight matrices and bias are specific to the update gate and learned via backpropagation.
+\par
+To compute the next hidden state the computed gates are used as follows:
+\begin{equation}\label{eq:gru_hidden_state}
+    h_t = z_t \circ h_{t-1} + (1 - z_t) \circ \text{tanh}(W_hx_t + U_h(r_t \circ h_{t-1}) + b_h)
+\end{equation}
+In equation~\ref{eq:gru_hidden_state} we can see how the gates do their job.
+When the reset gate is close to 0 in some features, the hidden state is forced to ignore that information before being multiplied with the weight matrix of the recurren unit.
+On the other hand, the update gate controls how much information should be propagated directly from the hidden state, versus the hidden state resulting from the new input.
+If the reset gate is 1 and the update gate is 0 we get the same formula as in~\ref{eq:rnn_hidden_state}, effectively returning to the vanilla RNN formulation.
+\subsection{Embeddings of categorical variables}
+A categorical variable is variable that can take one of a limited number of values.
+Examples are colors, locations or, in the context of e-commerce, product ids.
+When using such variables as an input variable for some model, the variables need to be transformed into a numerical representation, such that the variable can be used.
+Let us assume we have a variable which describes the color of a specific product.
+For simplicity we assume there are only four colors: red, green, blue, yellow.
+One possibility would be to just assign integer ids to the different colors as shown in table~\ref{tab:id_encoding}.
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{c|c}
+    Color & Id \\ \hline
+    Red & 0 \\
+    Green & 1 \\
+    Blue & 2 \\
+    Yellow & 3
+    \end{tabular}
+    \caption{Integer Ids for Colors}
+    \label{tab:id_encoding}
+\end{table}
+
+The problem with this approach is that integers have a defined order.
+That means that any model will interpret the color yellow as larger or as a stronger signal, than the color red.
+This is not desirable, in the case of colors, all of them should have the same magnitude so to speak.
+\par
+A different way of representing categorical variables is the so called one-hot encoding.
+A one-hot encoding requires a continuous id space, such as the one in table~\ref{tab:id_encoding}.
+The same colors encoded in a one-hot encoding can be seen in table~\ref{tab:one_hot_encoding}.
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{c|c}
+    Color & One-Hot Encoding \\ \hline
+    Red & $[1,0,0,0]$ \\
+    Green & $[0,1,0,0]$ \\
+    Blue & $[0,0,1,0]$ \\
+    Yellow & $[0,0,0,1]$
+    \end{tabular}
+    \caption{One-Hot Encoding for Colors}
+    \label{tab:one_hot_encoding}
+\end{table}
+Now all the color representations have the same magnitude, therefore the model will get the same signal strength from each of the colors.
+In principle we transform the id encoding to a one-hot encoding by using a zero vector of dimension $\max(\text{id})$ and set the element at the position $\text{id}-1$ to 1.
+Therefore the one-hot encoding always has the same dimensionality as the number of categories.
+There are still two major drawbacks to this approach.
+As we will see in section~\ref{sec:dataset_properties} the number of categories for such a variable can range into the millions.
+This means that the dimensionality of the single categorical feature can range into the millions, obviously this is not desirable, since high dimensionality leads to more difficulties in training and more computing resources needed to accomplish the training task.
+The second drawback is that this representation does not account for the notion of similarity, i.e. red is as similar to blue as it is to yellow.
+However it is known that green is a composition of blue and yellow, so intuitively green should be more similar to blue and yellow than to red.
+\par
+These two issues can be solved by using embeddings.
+Embeddings are a low dimensional real numbered representation of a categorical variable.
+Further similar variables will have similar vectors representing them.
+The difficulty with embeddings is finding a process which produces the embeddings with the desired properties.
+For a small number of variables it is possible to manually construct them.
+In table~\ref{tab:embedding} we can see a lower dimensional representation of the same colors, however now the distance between green and yellow or blue is smaller than the one between green and red.
+Further all the representations still have the same magnitude, therefore not triggering a stronger signal depending on the color.
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{c|c}
+    Color & Embedding \\ \hline
+    Red & $[1,0,0]$ \\
+    Green & $[0,\sqrt{0.5},\sqrt{0.5}]$ \\
+    Blue & $[0,1,0]$ \\
+    Yellow & $[0,0,1]$
+    \end{tabular}
+    \caption{Possible Embedding for Colors}
+    \label{tab:embedding}
+\end{table}
 
 \section{Previous Work}
 \subsection{Meta-Prod2Vec}
 \begin{itemize}
     \item This is a model that allows us to capture the semantic similarity between products
-    \item Explain the assumption of word2vec
+    \item The basic assumption behind word2vec is that words that appear in similar contexts are similar.
+    \item This comes from linguistics?
+    \item How to explain the formula?
     \item Show equation of word2vec
-    \item How do we apply this to products?
+    \item To apply this to products we interpred products as words and sessions as sentences.
+    \item Additionally we introduce the notion of side information, by instantiating the metadata in the same space, and modeling the relations between metadata
 \end{itemize}
 \cite{prod2vec}
 \subsection{Hierarchical RNNs for personalized Recommendations}

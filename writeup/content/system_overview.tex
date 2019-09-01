@@ -1,30 +1,45 @@
 \chapter{System Overview}
 
-\section{Model Architecture}\label{model_arch}
+\section{Model Architecture}\label{sec:model_arch}
 The inspiration from this work comes from~\cite{hierarchical}.
 The authors designed a model architecture that can capture 
 \begin{itemize}
-\item Describe how it captures the session representation
-\item illustration for hierarchical neural network
-\item Describe Model Architecture
-\item Describe different Components of Model Architecture
+    \item The architecture builds on what the authors of~\cite{gru4rec} designed.
+    \item The model called GRU4Rec uses a RNN using GRUs to model the session data.
+    \item The learning task boils down to learn the typical paths users take through the online-store.
+    \item This model is not personalized, since we do not use the information which user generated a specific session.
+    \item The idea is to predict which product the users wants to see next and provide him or her with a shortcut.
+    \item Now we have a fixed size representation of a session.
+    \item Now we could try to learn how sessions evolve over time by adding another RNN on the above layer.
+    \item This is done by using the session representation as the input, and therefore the hidden state represents the evolvement of the user.
+    \item 
+    \item Describe how it captures the session representation
+    \item illustration for hierarchical neural network
+    \item Describe Model Architecture
+    \item Describe different Components of Model Architecture
 \item Describe different variants of the model (with/without pf, with/without embeddings)
 \end{itemize}
 \subsection{Model training}
 \section{Product Embedding}
 \begin{itemize}
-    \item Describe the Architecture of MetaProd2Vec
+    \item We introducted the model architecture for Meta Prod2Vec in~\todo{Add reference to section about metaprod2vec}
+    \item We used the features brand, producttype, and price class.
+    \item The price class is computed by determining the quantiles of products in the same product type and categorizing the products into 4 price classes.
+    \item We used equal weights for all the metadata.
+    \item 
+    \item 
     \item Write about the features used, what are the transformations etc.
 \end{itemize}
 
 \section{Implementation}
 
 \begin{itemize}
+    \item we could make a diagram showing the different components
 \item Describe Class Diagram
 \item Describe prediction mode/training mode
 \item Describe problems that arose during training (extensive resources used for so many products and users)
 \end{itemize}
-\subsection{API}\label{api}
+\subsection{API}\label{sec:api}
 As described above the model is implemented in Tensorflow\footnote{\url{http://tensorflow.org}}.
 Tensorflow provides a mechanism to export tensorflow models as so called SavedModel\footnote{\url{https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/saved_model/README.md}}, which is the way Tensorflow serializes models universally.
 They also provide a premade Docker image\footnote{\url{https://hub.docker.com/r/tensorflow/serving}} which allows the model to be served as a REST or GRPC API.
@@ -68,8 +83,8 @@ Examples are the landing page\todo{Add screenshot} and multiple engines on the p
 There is a framework that computes probabilities which specific recommendation engine provides the content for a specific location.
 Further the framework then chooses the content for each location based on the probabilities computed before and some other constraints such as minimum and maximum value.
 However to test the model implemented in this work this framework is bypassed by a A/B Testing engine, therefore this framework is not part of this work.
-The specific tests and the test setup is described in~\ref{exp_setup}, for the understanding of the following it is enough to assume that some independant system is providing recommendation requests to the recommendation system.
-Using the API containers described in~\ref{api} we can serve these requests.
+The specific tests and the test setup is described in~\ref{sec:exp_setup}, for the understanding of the following it is enough to assume that some independant system is providing recommendation requests to the recommendation system.
+Using the API containers described in~\ref{sec:api} we can serve these requests.
 The sequence-diagram in figure~\ref{fig:serving_recs} should give an overview on how the system is integrated in the production environment.
 
 \begin{figure}[H]
