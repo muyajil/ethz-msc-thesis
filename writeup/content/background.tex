@@ -285,17 +285,76 @@ Further all the representations still have the same magnitude, therefore not tri
 
 \section{Previous Work}
 \subsection{Meta-Prod2Vec}
+Meta-Prod2Vec is a method proposed in~\cite{meta_prod2vec} to compute such embeddings as described in the previous section.
+The original inspiration for this approach comes from the famous \emph{word2vec} model (c.f.~\cite{word2vec}), a method of computing embeddings for words, respecting the similarity between them.
+Based on word2vec Yahoo developed a model named \emph{prod2vec} (c.f.~\cite{prod2vec}) based on word2vec, that computes embeddings of products based on the receipts their customers are receiving in their inbox.
+Meta-Prod2Vec is an extension of prod2vec that allows to include meta information about products, such as brands and product type for example.
+\par
+The fundamental assumption behind all of the afromentioned models is the famous Distributional Hypothesis~\cite{distributional}, which states that words that appear in the same context have similar, if not identical, meaning.
+For illustration purposes consider the following two example sentences:
 \begin{itemize}
-    \item This is a model that allows us to capture the semantic similarity between products
-    \item The basic assumption behind word2vec is that words that appear in similar contexts are similar.
-    \item This comes from linguistics?
-    \item How to explain the formula?
-    \item Show equation of word2vec
-    \item To apply this to products we interpred products as words and sessions as sentences.
-    \item Additionally we introduce the notion of side information, by instantiating the metadata in the same space, and modeling the relations between metadata
+    \item George likes to drink a glass of wine in the evening.
+    \item George likes to drink a glass of whiskey in the evening.
 \end{itemize}
-\cite{prod2vec}
+Without knowing the meaning of the words "wine" or "whiskey", it is possible to deduce that they are at least similar concetps.
+Essentially the context of a word limits the number of possible words that can appear in that context.
+If that context is restrictive enough, there are only few possible words or concept that can appear in that context.
+This assumption is translated into the context of e-commerce by interpreting products as words and sessions or purchase sequences as sentences.
+\par
+Since Meta-Prod2Vec is a extension of prod2vec it makes sense to first look at the loss function of prod2vec in equation~\ref{eq:prod2vec_loss}:
+\begin{equation}\label{eq:prod2vec_loss}
+    L_{J|I} = \sum_i X_iH(p_{\cdot|i},q_{\cdot|i})
+\end{equation}
+Where $X_i$ is the number of occurences of word $i$ and $H(\cdot)$ is the cross entropy loss.
+Further $J$ describes the output space, whereas $I$ is the input space, in this context they are the same.
+Essentially the loss function is the weighted cross entropy loss between the empirical probability distribution $p_{\cdot|i}$ and the predicted probability distribution $q_{\cdot|i}$.
+The weighted cross entropy loss forces the predicted probability to be close to the observed empirical probability, for any product.
+Effectively this means that the learned probability function $q_{\cdot|i}$, in the case of observed events, is close to to the empirical probability distribution, while also allowing predictions of yet unseen events.
+\par
+In the next step we look at the learned probability function $q_{\cdot|i}$, and how it is related to the embeddings of products.
+In equation~\ref{eq:prod2vec_softmax} we can see how $q_{\cdot|i}$ is defined:
+\begin{equation}\label{eq:prod2vec_softmax}
+    q_{j|i} = \frac{\exp(w_i^Tw_j)}{\sum_{j \in V_J} \exp(w_i^Tw_{j})}
+\end{equation}
+This defines the probability that product $j$ is in the context of product $i$.
+In principle this means, that the inner product $w_i^Tw_j$ is interpreted as an unnormalized probability, and by applying the softmax function we get a probability distribution over all possible context words $V_J$.
+\par
+From looking at the two equations above, it is quickly clear that computing this loss function is rather expensive, the complexity is $O(n^2)$ for $n$ being the number of products.
+Due to this these models are usually trained using negative sampling loss~\cite{neg_sampling}.
+\par
+The loss function of Meta-Prod2Vec as seen in equation~\ref{eq:meta_prod2vec_loss} is a natural extension of the loss function of prod2vec.
+\begin{equation}\label{eq:meta_prod2vec_loss}
+    L_{MP2V} = L_{J|I} + \lambda \cdot (L_{M|I} + L_{J|M} + L_{M|M} + L_{I|M})
+\end{equation}
+Where $\lambda$ is a regularization parameter controlling how much the side information influences the total loss and $M$ describes the metadata space.
+In the following we will look at the different components of the loss function:
+\begin{itemize}
+    \item $L_{J|I}$: This is the same term as in equation~\ref{eq:prod2vec_loss}, it describes the cross entropy between the observed conditional probability and the modeled conditional probability of the output products conditioned on the input products.
+    \item $L_{M|I}$: This is the loss component of the probability distribution of metadata values of surrounding products, given the input product.
+    \item $L_{J|M}$: This component measures the loss of the probability distribution of surrounding products, given the metadata values of the input product.
+    \item $L_{M|M}$: This is the loss incurred from the probability distribution of surrounding products metadata, given the metadata values of the input product.
+    \item $L_{I|M}$: Finally this component measures the loss of the probability distribution of the input products, given their own metadata values.
+\end{itemize}
+In principle the objective function in equation~\ref{eq:prod2vec_loss} is extended to include all possible interaction terms with the metadata.
+The beauty of this loss function is that it does not change the training algorithm of prod2vec at all.
+The only thing changing is the data generation process, additionally to creating the pairs of co-occurring products, also co-occurring metadata and products are generated.
+Since the individual components of the loss function are computed in exactly the same way, adding these co-occurence terms will automatically compute the total loss.
+Thus the metadata values will be embedded in the same output space.
 \subsection{Hierarchical RNNs for personalized Recommendations}
+The work presented in~\cite{hierarchical} serves as a basis for this thesis.
+The authors present a model architecture that can model the session behaviour of users, as well as learning historical user preferences and applying those to the recommendations.
+This makes it a user- and session-based recommendation system.
+The architecture presented is based on a model called \emph{gru4rec} presented in~\cite{gru4rec}.
+In figure~\ref{fig:hgru4rec} we can see an illustration of the model architecture.
+
+\begin{figure}[ht]
+	\centering
+	\captionsetup{width=0.8\textwidth}
+    \includegraphics[width=\textwidth]{hgru4rec.png}
+    \caption{HGRU4REC model architecture}
+    \label{fig:hgru4rec}
+\end{figure}
+
 \begin{itemize}
     \item This is the starting point for the thesis
     \item Which components does the system have?
@@ -305,7 +364,7 @@ Further all the representations still have the same magnitude, therefore not tri
 
 \section{KPIs}
 \subsection{Click-Through-Rate}
-\subsection{Conversion Rate}\label{conversion_rate}
+\subsection{Conversion Rate}\label{sec:conversion_rate}
 \begin{itemize}
 \item Describe different KPIs
 \item What do they meaure, how to optimize for it
