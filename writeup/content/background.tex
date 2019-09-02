@@ -170,11 +170,11 @@ The basic idea of backpropagation is to attribute parts of the error computed to
 As described in~\cite{rnn_survey} this is done by using the chain rule to compute the derivative of $\mathcal{L}(y, y')$ with respect to each weight vector.
 The weight vector is then adjusted by gradient descent, i.e. by moving the vector in the direction of the largest decrease in the gradient.
 There are more parameters involved such as the learning rate, which defines how much in the direction of the gradient the weights are adjusted, however these are not needed for understanding the principle.
-\subsubsection{Backpropagation with RNNs}
+\subsubsection{Backpropagation with RNNs}bbbbbbb
 Also in~\cite{rnn_survey} the authors mention that training RNNs has been known to be especially difficult due to the \emph{vanishing} or \emph{exploding gradients} problem.
 As an example we consider the RNN in figure~\ref{fig:rnn}.
 Now we assume we compute the estimation $y'_t$, i.e. the output of timestep $t$.
-As we can see in the equations~\ref{eq:1} and~\ref{eq:rnn_output} this output is also influenced by all the previous timesteps.
+As we can see in the equations~\ref{eq:rnn_hidden_state} and~\ref{eq:rnn_output} this output is also influenced by all the previous timesteps.
 The problem now arises from the so called recurrent weights denoted by $W^{hh}$, those connecting the units across the temporal axis.
 For now we assume that the weights are small, i.e. $|w_{ij}| < 1$ for $w_{ij} \in W^{hh}$.
 Since the weights are small, the contribution of input $x_{t-k}$ to the output $y'_t$ gets exponentially smaller with increasing $k$.
@@ -306,7 +306,7 @@ Since Meta-Prod2Vec is a extension of prod2vec it makes sense to first look at t
     L_{J|I} = \sum_i X_iH(p_{\cdot|i},q_{\cdot|i})
 \end{equation}
 Where $X_i$ is the number of occurences of word $i$ and $H(\cdot)$ is the cross entropy loss.
-Further $J$ describes the output space, whereas $I$ is the input space, in this context they are the same.
+Further $J$ describes the output space, whereas $I$ is the input space, in this context they are the same, specifically all the possible products.
 Essentially the loss function is the weighted cross entropy loss between the empirical probability distribution $p_{\cdot|i}$ and the predicted probability distribution $q_{\cdot|i}$.
 The weighted cross entropy loss forces the predicted probability to be close to the observed empirical probability, for any product.
 Effectively this means that the learned probability function $q_{\cdot|i}$, in the case of observed events, is close to to the empirical probability distribution, while also allowing predictions of yet unseen events.
@@ -319,7 +319,7 @@ In equation~\ref{eq:prod2vec_softmax} we can see how $q_{\cdot|i}$ is defined:
 This defines the probability that product $j$ is in the context of product $i$.
 In principle this means, that the inner product $w_i^Tw_j$ is interpreted as an unnormalized probability, and by applying the softmax function we get a probability distribution over all possible context words $V_J$.
 \par
-From looking at the two equations above, it is quickly clear that computing this loss function is rather expensive, the complexity is $O(n^2)$ for $n$ being the number of products.
+From looking at the two equations above, it is apparent that computing this loss function is rather expensive, the complexity is $O(n^2)$ for $n$ being the number of products.
 Due to this these models are usually trained using negative sampling loss~\cite{neg_sampling}.
 \par
 The loss function of Meta-Prod2Vec as seen in equation~\ref{eq:meta_prod2vec_loss} is a natural extension of the loss function of prod2vec.
@@ -340,27 +340,34 @@ The beauty of this loss function is that it does not change the training algorit
 The only thing changing is the data generation process, additionally to creating the pairs of co-occurring products, also co-occurring metadata and products are generated.
 Since the individual components of the loss function are computed in exactly the same way, adding these co-occurence terms will automatically compute the total loss.
 Thus the metadata values will be embedded in the same output space.
-\subsection{Hierarchical RNNs for personalized Recommendations}
+\subsection{Personalized Session-based Hierarchical Recurrent Neural Network}
 The work presented in~\cite{hierarchical} serves as a basis for this thesis.
 The authors present a model architecture that can model the session behaviour of users, as well as learning historical user preferences and applying those to the recommendations.
 This makes it a user- and session-based recommendation system.
 The architecture presented is based on a model called \emph{gru4rec} presented in~\cite{gru4rec}.
 In figure~\ref{fig:hgru4rec} we can see an illustration of the model architecture.
+Essentially the difference between gru4rec and hgru4rec is the addition of the the second level GRU, $GRU_{u}$, which keeps track of historical user preferences.
 
 \begin{figure}[ht]
 	\centering
 	\captionsetup{width=0.8\textwidth}
     \includegraphics[width=\textwidth]{hgru4rec.png}
-    \caption{HGRU4REC model architecture}
+    \caption{hgru4rec model architecture}
     \label{fig:hgru4rec}
 \end{figure}
 
+To formalize the sessions of users we define the sessions of a specific user $u$ as $\mathcal{S}_u = \lbrace s_u^1, s_u^2, \cdots, s_u^n \rbrace $.
+Further a session is defined as $s_u^k = \lbrace e^k_1, e^k_2, \cdots, e^k_m \rbrace $.
+Finally an event $e^k_n$ is the product id of of the product viewed in session $k$ at position $n$.
+\par
+The proposed model uses the session level GRU, $GRU_s$, to predict the next item that the user would view.
+The hidden state $h_s$ serves as a fixed size representation of the session.
+The input to the GRU is defined as follows: $i_{m,n} = \text{onehot} ( e^m_n )$, where $\text{onehot}(x)$ is the one-hot encoding of the integer $x$.
 \begin{itemize}
-    \item This is the starting point for the thesis
-    \item Which components does the system have?
-    \item Show the graphic from the paper
+    \item How to compute session level representation: here we use one hot encoding.
+    \item How to compute user level representation
+    \item What is the loss function of this model? What is the value space of that loss function?
 \end{itemize}
-\cite{hierarchical}
 
 \section{KPIs}
 \subsection{Click-Through-Rate}
