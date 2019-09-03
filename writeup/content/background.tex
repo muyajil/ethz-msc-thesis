@@ -170,7 +170,7 @@ The basic idea of backpropagation is to attribute parts of the error computed to
 As described in~\cite{rnn_survey} this is done by using the chain rule to compute the derivative of $\mathcal{L}(y, y')$ with respect to each weight vector.
 The weight vector is then adjusted by gradient descent, i.e. by moving the vector in the direction of the largest decrease in the gradient.
 There are more parameters involved such as the learning rate, which defines how much in the direction of the gradient the weights are adjusted, however these are not needed for understanding the principle.
-\subsubsection{Backpropagation with RNNs}bbbbbbb
+\subsubsection{Backpropagation with RNNs}
 Also in~\cite{rnn_survey} the authors mention that training RNNs has been known to be especially difficult due to the \emph{vanishing} or \emph{exploding gradients} problem.
 As an example we consider the RNN in figure~\ref{fig:rnn}.
 Now we assume we compute the estimation $y'_t$, i.e. the output of timestep $t$.
@@ -184,7 +184,7 @@ The opposite happens when the recurrent weights are large, i.e. $|w_{ij}| > 1$ f
 In this case the contribution gets amplified when $k$ gets large, and therefore we would be dealing with exploding gradients.
 This is a problem in a setting where we want to learn long-range dependencies, which is often the case in sequence modeling.
 
-\subsubsection{Gated Recurrent Unit}
+\subsubsection{Gated Recurrent Unit}\label{sec:gru}
 The Gated Recurrent Unit (GRU) is a recurrent unit which aims to solve the exploding or vanishing gradients problem mentioned above.
 This is achieved by modifying the behaviour of the hidden units, in between which the recurrent edges of the network are.
 The authors of~\cite{gru} introduced this new type of recurrent unit.
@@ -340,7 +340,7 @@ The beauty of this loss function is that it does not change the training algorit
 The only thing changing is the data generation process, additionally to creating the pairs of co-occurring products, also co-occurring metadata and products are generated.
 Since the individual components of the loss function are computed in exactly the same way, adding these co-occurence terms will automatically compute the total loss.
 Thus the metadata values will be embedded in the same output space.
-\subsection{Personalized Session-based Hierarchical Recurrent Neural Network}
+\subsection{Personalized Session-based Hierarchical Recurrent Neural Network}\label{sec:hgru4rec}
 The work presented in~\cite{hierarchical} serves as a basis for this thesis.
 The authors present a model architecture that can model the session behaviour of users, as well as learning historical user preferences and applying those to the recommendations.
 This makes it a user- and session-based recommendation system.
@@ -363,16 +363,67 @@ Finally an event $e^k_n$ is the product id of of the product viewed in session $
 The proposed model uses the session level GRU, $GRU_s$, to predict the next item that the user would view.
 The hidden state $h_s$ serves as a fixed size representation of the session.
 The input to the GRU is defined as follows: $i_{m,n} = \text{onehot} ( e^m_n )$, where $\text{onehot}(x)$ is the one-hot encoding of the integer $x$.
-\begin{itemize}
-    \item How to compute session level representation: here we use one hot encoding.
-    \item How to compute user level representation
-    \item What is the loss function of this model? What is the value space of that loss function?
-\end{itemize}
+Now the output and the next hidden state are computed using the formula introduced in~\ref{sec:gru} as follows:
+\begin{equation}\label{eq:hgru4rec_session}
+    r_{m,t}, h_m^{t} = GRU_s(i_{m,n-1}, h_s^{t-1})
+\end{equation}
+Where $h_m^{t}$ is the session hidden state of session $m$ at time $t$ and $r_{m,t}$ is a score for every item to be recommended in session $m$ at time $t$.
+The output of the GRU, $r_{m,t}$ is compared to the one-hot encoding of the next item, i.e. $i_{m,t+1}$ to compute the loss function.
+The loss function was explicitly designed by the authors for this task.
+The TOP1 loss is the regularized approximate relative rank of the relevant item.
+The relative rank of the relevant item in the next step is defined in equation~\ref{eq:relative_rank}:
+\begin{equation}\label{eq:relative_rank}
+    \text{relative rank} = \frac{1}{N}\cdot \sum_{j=1}^{N} I\lbrace r_{m,t}^j > r_{m,t}^i \rbrace
+\end{equation}
+Where $N$ is the number of items, $r_{m,t}^k$ is the score of item $k$ in session $m$ at time $t$ and finally $i$ is the relevant item in the next step.
+Essentially this function computes the number of items which have a higher score than the relevant item.
+However this relative rank has two drawbacks: First the indicator function is difficult to derive and second the computation of the loss for one item involves the computation of the score for all possible items.
+Therefore the relative rank is approximated by the equation~\ref{eq:top1_loss}, which further includes a regularization term forcing the irrelevant item scores towards zero.
+\begin{equation}\label{eq:top1_loss}
+    L_{TOP1} = \frac{1}{N_S} \cdot \sum_{j=1}^{N_S} \sigma(r_{m,n}^j - r_{m,n}^i) + \sigma(r_{m,n}^j)
+\end{equation}
+Where $N_S$ is the number of sampled irrelevant items, to avoid the computation of the scores for every item and $\sigma$ is a sigmoid function.
+The sampling method will be discussed further when looking at the dataset.
+\par
+After a session is completed the user-level GRU, $GRU_u$ comes into play.
+The task of this GRU is to learn how the session representation of users change over time.
+This is achieved by using the fixed size session representation as the input to $GRU_u$.
+The output of $GRU_u$ then will serve as the new initial session hidden state for the next session.
+\begin{equation}\label{eq:hgru4rec_user}
+    h_u^m, h_m^0 = GRU_u(h_u^{m-1}, h_{m-1}^{n_{m-1}})
+\end{equation}
+Where $h_u^m$ is the hidden state of user $u$ at the beginning of session $m$ and $n_m$ is the number of items in session $m$.
+\par
+Both GRUs are trained jointly using the same loss function.
 
-\section{KPIs}
-\subsection{Click-Through-Rate}
-\subsection{Conversion Rate}\label{sec:conversion_rate}
-\begin{itemize}
-\item Describe different KPIs
-\item What do they meaure, how to optimize for it
-\end{itemize}
+\section{Key Performance Indicators}
+Key performance indicators (KPIs) are metrics used in a business process to measure the performance of said process.
+In online-services there are a few well established metrics, most relevant for this work are the click-through rate and the conversion rate.
+These metrics are also often used in testing multiple versions of the same element, for example a new design of a button.
+By measuring these metrics it can be determined which version suits the users better.
+\paragraph{Click-Through Rate}
+The click-through rate (CTR) measures how many users click on a specific element relative to the number of impressions.
+Impressions are defined as the event when a user has the specific element that is measured in his viewport.
+Finally the viewport is the part of the website or web application which is visible to the user in his browser window.
+In equation~\ref{eq:ctr} we can see the formalization of this.
+\begin{equation}\label{eq:ctr}
+    \text{CTR} = \frac{\#\text{clicks}}{\#\text{impressions}}
+\end{equation}
+\paragraph{Conversion Rate}\label{sec:conversion_rate}
+The conversion rate measures how many successful transactions follow from the interaction with a specific element.
+A transaction can be defined in a rather abstract way, such as listening to a song to the end, or watching a video to the end.
+In the context of e-commerce however the conversion rate is rather obvious, it measures how many successful sales are made following an interaction with an element.
+This is formalized in equation~\ref{eq:conversion_rate}
+\begin{equation}\label{eq:conversion_rate}
+    \text{Conversion Rate} = \frac{\#\text{sales}}{\#\text{impressions}}
+\end{equation}
+Since there might be multiple elements for which the conversion rate is measured, there needs to be a strategy of attributing sales to specific elements in the web application.
+An exact way of computing the conversion rate is therefore difficult to find, instead there are multiple ways to approximate this value.
+One common way to do is, if the user sees an impression of a specific element and completes a purchase in the same session, then this element receives credit for the sale.
+The problem with this approach is that this does not track the user across multiple sessions.
+The session in which the user finds this item, and the session in which the user actually makes the purchase are often not the same.
+Also if the user receives an impression, it is not clear that the user actually registers the item, or if the user is focused on another part of the application.
+Finally this method credits sales to an element even if the purchased product was not even recommended.
+Thus we chose another approximation of this metric.
+If a user purchases an item that was recommended and then clicked by the user, and the click is less than 14 days before the purchase, the element receives credit for the sale.
+The number 14 days was chosen because more than 99\% of sales of products, which were clicked by the users after being recommended, fall into this range.
