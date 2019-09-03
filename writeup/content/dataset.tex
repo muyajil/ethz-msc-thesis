@@ -6,7 +6,7 @@ The following sequence-diagram gives an overview of the data collection process.
 
 \begin{figure}[H]
 	\centering
-	\captionsetup{width=0.8\textwidth}
+    \captionsetup{width=0.8\textwidth}
     \includegraphics[width=\textwidth]{collecting-data.png}
     \caption{Collecting user interaction data on digitec.ch and galaxus.ch}
     \label{fig:collecting_data}
@@ -54,6 +54,7 @@ Most famously the Google Bot which crawls the content of any website to determin
 There are some open-source lists that collect the User Agents of these bots.
 The User Agent of a client accessing a website usually describes the type of device used, in the case of "good" bots they explicitly tell the server that the "device" accessing the website is actually a bot.
 Using one of these lists\footnote{\url{https://raw.githubusercontent.com/monperrus/crawler-user-agents/master/crawler-user-agents.json}} the events produced by bots are removed from the dataset.
+
 \paragraph{Aggregation of events}
 The next step is to aggregate the events on two levels, first grouping events that were generated in the same session and second grouping these sessions by users.
 The resulting data structure looks as follows:
@@ -151,4 +152,31 @@ To compute the loss function mentioned in~\ref{sec:hgru4rec} we sample the irrel
 This basically enables popularity based sampling, since the samples are directly taken from other sessions.
 
 \section{Dataset properties}\label{sec:dataset_properties}
-\todo{Show dataset stats for different datasets}
+Using the afromentioned sampling step we generated different sizes of the dataset to enable model prototyping.
+In table~\ref{tab:dataset_stats} we can see the properties of the different datasets.
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{|c|c|c|c|}
+        \hline
+        Property & MINI Dataset & MIDI Dataset & MAXI Dataset \\ \hline
+        \#Users & 23 & 15'242 & 242'797 \\ \hline
+        \#Products & 161 & 42'103 & 470'817 \\ \hline
+        \#Events & 633 & 1'234'697 & 28'726'701 \\ \hline
+        \#Sessions & 183 & 250'187 & 4'652'496 \\ \hline
+        \#Sessions per User & 7.96 \pm 5.41 & 16.41 \pm 22.08 & 19.16 \pm 28.67 \\ \hline
+        \#Events per Product & 3.93 \pm 5.84 & 29.33 \pm 69.98 & 61.27 \pm 263.3 \\ \hline
+        \#Events per Session & 3.46 \pm 0.82 & 4.94 \pm 3.07 & 6.17 \pm 60.22 \\ \hline
+    \end{tabular}
+    \caption{Dataset Properties}
+    \label{tab:dataset_stats}
+\end{table}
+
+The MINI dataset is used to validate that the model works. 
+The goal is to completely overfit to the training data and remember everything.
+This allows to quickly debug and validate the gradient flow through the model.
+The MIDI dataset is used for experiments with different model sizes.
+The goal with this dataset is that we can try out different models on a somewhat realistic dataset, which is of similar size than the one from~\ref{hierarchical}, and be able to train these models in a reasonable time frame.
+The MAXI dataset essentially is the complete dataset containing all events that were not filtered in the data preparation process.
+Depending on the model size training on this dataset can take several days, therefore only the models that performed best on the MIDI dataset were trained on the MAXI dataset.
+Further the models that are deployed in the experiments are all trained on the MAXI dataset.

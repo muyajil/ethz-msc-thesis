@@ -1,0 +1,19 @@
+actor "++User++" as u
+participant "++Online-Shop++" as os
+participant "++Personalization Infrastructure++" as p
+participant "++A/B Testing Engine++" as ab
+participant "++Flask API++" as fa
+participant "++TF Serve API++" as tf
+participant "++Google Cloud Datastore++" as ds
+u->os:++Request some page++
+os->p:++Request recommendation++
+p->ab: ++Request API for current User++
+ab-->p: ++Return API location++
+p->fa: ++Request recommendation++
+fa->ds: ++Get Embeddings++
+ds-->fa: ++Embeddings++
+fa->tf: ++Request recommendation++
+tf-->fa: ++Return recommendation++
+fa-->p: ++Return recommendation++
+p-->os: ++Return recommendation++
+os-->u: ++Return rendered page++

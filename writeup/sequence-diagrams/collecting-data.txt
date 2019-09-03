@@ -1,0 +1,15 @@
+actor "++User++" as u
+participant "++Online-Shop++" as os
+participant "++Message Queue++" as mq
+participant "++Personalization Infrastructure++" as p
+participant "++Google Cloud Datastore++" as ds
+participant "++Google Cloud BigQuery++" as bq
+u->os: ++Request some page++
+os->mq: ++Send message containing event information++
+loop
+p->mq: ++Request pending messages++
+mq-->p: ++Return pending messages++
+p->ds: ++Update entities++
+p->bq: ++Archive event++
+p->mq: ++Acknowledge messages++
+end
