@@ -164,9 +164,9 @@ In table~\ref{tab:dataset_stats} we can see the properties of the different data
         \#Products & 161 & 42'103 & 470'817 \\ \hline
         \#Events & 633 & 1'234'697 & 28'726'701 \\ \hline
         \#Sessions & 183 & 250'187 & 4'652'496 \\ \hline
-        \#Sessions per User & 7.96 \pm 5.41 & 16.41 \pm 22.08 & 19.16 \pm 28.67 \\ \hline
-        \#Events per Product & 3.93 \pm 5.84 & 29.33 \pm 69.98 & 61.27 \pm 263.3 \\ \hline
-        \#Events per Session & 3.46 \pm 0.82 & 4.94 \pm 3.07 & 6.17 \pm 60.22 \\ \hline
+        \#Sessions per User & 7.96 $\pm$ 5.41 & 16.41 $\pm$ 22.08 & 19.16 $\pm$ 28.67 \\ \hline
+        \#Events per Product & 3.93 $\pm$ 5.84 & 29.33 $\pm$ 69.98 & 61.27 $\pm$ 263.3 \\ \hline
+        \#Events per Session & 3.46 $\pm$ 0.82 & 4.94 $\pm$ 3.07 & 6.17 $\pm$ 60.22 \\ \hline
     \end{tabular}
     \caption{Dataset Properties}
     \label{tab:dataset_stats}
@@ -176,7 +176,7 @@ The MINI dataset is used to validate that the model works.
 The goal is to completely overfit to the training data and remember everything.
 This allows to quickly debug and validate the gradient flow through the model.
 The MIDI dataset is used for experiments with different model sizes.
-The goal with this dataset is that we can try out different models on a somewhat realistic dataset, which is of similar size than the one from~\ref{hierarchical}, and be able to train these models in a reasonable time frame.
+The goal with this dataset is that we can try out different models on a somewhat realistic dataset, which is of similar size than the ones used in~\cite{hierarchical}, and be able to train these models in a reasonable time frame.
 The MAXI dataset essentially is the complete dataset containing all events that were not filtered in the data preparation process.
 Depending on the model size training on this dataset can take several days, therefore only the models that performed best on the MIDI dataset were trained on the MAXI dataset.
 Further the models that are deployed in the experiments are all trained on the MAXI dataset.
