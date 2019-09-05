@@ -1,47 +1,55 @@
 \chapter{System Overview}
 
 \section{Model Architecture}\label{sec:model_arch}
+\subsection{hgru4rec}
+In section~\ref{sec:hgru4rec} we introduced the model architecture for hgru4rec.
+This work proposes and improvement of this model by using the model introduced in~\ref{sec:meta_prod2vec}.
+As mentioned before hgru4rec uses a one-hot encoding of items as the input, as seen in equation~\ref{eq:hgru4rec_session}.
+We propose to use pre-computed embeddings resulting from Meta-Prod2Vec as a replacement for the one-hot encodings.
+Therefore the model architecture is not different from the one seen in figure~\ref{fig:hgru4rec}.
+Meta-Prod2Vec is implemented and trained independently of the session-based model.
+After training Meta-Prod2Vec, the product embeddings are extracted and saved to a key-value store.
+Afterwards hgru4rec can access this key-value store during training and inference such that the model can consume the product embeddings instead of the one-hot vectors.
+\paragraph{Model training}
+After testing different optimizers the Adam optimizer performed best, therefore we used this for training the hierarchical RNN.
+Each model was trained until there was no more improvement in the validation metric.
 
-The inspiration from this work comes from~\cite{hierarchical}.
-The authors designed a model architecture that can capture 
+\subsection{Meta-Prod2Vec}
+In section~\ref{sec:meta_prod2vec} we introduced the model architecture for Meta-Prod2Vec.
+The model has a rather simple architecture, consisting of a single embedding layer, which is fitted using the loss function shown in equation~\ref{eq:meta_prod2vec_loss}
+The following side-information was used:
 \begin{itemize}
-    \item The architecture builds on what the authors of~\cite{gru4rec} designed.
-    \item The model called GRU4Rec uses a RNN using GRUs to model the session data.
-    \item The learning task boils down to learn the typical paths users take through the online-store.
-    \item This model is not personalized, since we do not use the information which user generated a specific session.
-    \item The idea is to predict which product the users wants to see next and provide him or her with a shortcut.
-    \item Now we have a fixed size representation of a session.
-    \item Now we could try to learn how sessions evolve over time by adding another RNN on the above layer.
-    \item This is done by using the session representation as the input, and therefore the hidden state represents the evolvement of the user.
-    \item 
-    \item Describe how it captures the session representation
-    \item illustration for hierarchical neural network
-    \item Describe Model Architecture
-    \item Describe different Components of Model Architecture
-\item Describe different variants of the model (with/without pf, with/without embeddings)
+    \item Brand
+    \item Product Type
+    \item Price Class
 \end{itemize}
-\subsection{Model training}
-\section{Product Embedding}
-\begin{itemize}
-    \item We introducted the model architecture for Meta Prod2Vec in~\todo{Add reference to section about metaprod2vec}
-    \item We used the features brand, producttype, and price class.
-    \item The price class is computed by determining the quantiles of products in the same product type and categorizing the products into 4 price classes.
-    \item We used equal weights for all the metadata.
-    \item 
-    \item 
-    \item Write about the features used, what are the transformations etc.
-\end{itemize}
+The product type specifies which category a product is in, for example "Mobile Phone" or "Dining Table".
+The mapping from products to brands and product types is very simple, since these are two properties each product must have.
+The price class is computed within a product type.
+The idea is to classify products into a a number of classes, such that the model can learn to fit "premium" products closer together.
+To achieve that we extract a number of quantiles from all the prices of the products within a certain product type.
+Then we assign IDs to the different quantiles, and this ID is then attached to the product as an additional side information.
+Afterwards the product and metadata space are joined, by creating and embedding dictionary that maps all the entities from the product and metadata space to a single contiuous ID space.
+This is done since the input to the projection layer is a one-hot encoding of the entity, since obviously we are again dealing with categorical data.
+As we have seen in equation~\ref{eq:meta_prod2vec_loss} the loss function would support a different weighting of the different types of side-information, however we found that this does not help the model learn better embeddings, therefore we use equal weights for all the types of side-information.
+\paragraph{Model training}
+The model is simply trained over two epochs.
+This decision was made because first the second pass over the data decreases the loss significantly, whereas the third pass does not.
 
 \section{Implementation}
+\subsection{hgru4rec}
+The session based model was implemented in Tensorflow\footnote{\url{http://tensorflow.org}}.
+In figure~\ref{fig:hgru4rec_implementation} we can see an illustration of the different components of the code.
 
+\subsection{Meta-Prod2Vec}
 \begin{itemize}
     \item we could make a diagram showing the different components
 \item Describe Class Diagram
 \item Describe prediction mode/training mode
 \item Describe problems that arose during training (extensive resources used for so many products and users)
 \end{itemize}
-\subsection{API}\label{sec:api}
-As described above the model is implemented in Tensorflow\footnote{\url{http://tensorflow.org}}.
+\section{API}\label{sec:api}
+As described above the model is implemented in Tensorflow.
 Tensorflow provides a mechanism to export tensorflow models as so called SavedModel\footnote{\url{https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/saved_model/README.md}}, which is the way Tensorflow serializes models universally.
 They also provide a premade Docker image\footnote{\url{https://hub.docker.com/r/tensorflow/serving}} which allows the model to be served as a REST or GRPC API.
 \begin{itemize}
@@ -105,4 +113,4 @@ The Personalization Infrastructure then calls the API described above.
 Before requesting a prediction from tf-serve the API will gather precomputed embeddings for the involved entities.
 The predictions are returned to the Personalization Infrastructure and from there to the Online Shop.
 The last step is for the Online Shop to render the content and deliver the page to the user.
-This process takes about XXms\todo{Get ms number here}ms.
+This process takes about 300ms.
