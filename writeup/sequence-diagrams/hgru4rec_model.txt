@@ -1,0 +1,16 @@
+hgru4rec_trainer.py->HGRU4Rec: __init__()
+HGRU4Rec->HGRU4RecOps: __init__()
+HGRU4RecOps->HGRU4RecFeatures: __init__()
+HGRU4RecFeatures-->HGRU4RecOps: self._ops.features
+HGRU4RecOps->HGRU4RecMetrics: __init__()
+HGRU4RecMetrics-->HGRU4RecOps: self._ops.metrics
+HGRU4RecOps->HGRU4RecLosses: __init__()
+HGRU4RecLosses-->HGRU4RecOps: self._ops.losses
+HGRU4RecOps-->HGRU4Rec: self._ops
+HGRU4Rec-->hgru4rec_trainer.py: model_instance
+hgru4rec_trainer.py->HGRU4Rec: setup_model()
+HGRU4Rec->HGRU4Rec: Setup TF Graph
+hgru4rec_trainer.py->UserParallelMiniBatchDataset: __init__()
+UserParallelMiniBatchDataset-->hgru4rec_trainer.py:train_dataset
+hgru4rec_trainer.py->UserParallelMiniBatchDataset: __init__()
+UserParallelMiniBatchDataset-->hgru4rec_trainer.py:valid_dataset

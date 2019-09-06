@@ -10,9 +10,37 @@ Therefore the model architecture is not different from the one seen in figure~\r
 Meta-Prod2Vec is implemented and trained independently of the session-based model.
 After training Meta-Prod2Vec, the product embeddings are extracted and saved to a key-value store.
 Afterwards hgru4rec can access this key-value store during training and inference such that the model can consume the product embeddings instead of the one-hot vectors.
+Further we will test hgru4rec without the user layer, to verify the improvement recorded by the authors of~\cite{hierarchical} using our dataset.
+Therefore this work investigates 4 different architectures documented in~\ref{tab:model_archs}.
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{|c|c|c|c|}
+        \hline
+        Model Name & One-Hot & Embedding & User Layer \\ \hline
+        OnlySessionOneHot & x & - & - \\ \hline
+        OnlySessionEmbedding & - & x & - \\ \hline
+        WithUserOneHot & x & - & x \\ \hline
+        WithUserEmbedding & - & x & x \\ \hline
+    \end{tabular}
+    \caption{Model Architectures}
+    \label{tab:model_archs}
+\end{table}
 \paragraph{Model training}
 After testing different optimizers the Adam optimizer performed best, therefore we used this for training the hierarchical RNN.
-Each model was trained until there was no more improvement in the validation metric.
+The model was trained until there was no more improvement in the validation metric.
+The mean reciprocal rank (MRR) at 10 was used as the validation metric.
+The reciprocal rank is defined in equation~\ref{eq:reciprocal_rank}
+
+\begin{equation}\label{eq:reciprocal_rank}
+    \text{RR} = 
+    \begin{cases}
+        \frac{1}{\text{rank}(\text{label})} & \text{if label } \in \text{predictions} \\
+        0 & \text{otherwise}
+    \end{cases}
+\end{equation}
+
+Where predictions are the top 10 predictions returned by the model and $\text{rank}(x)$ is the position of $x$ in those predictions.
+The MRR is the mean of the RR over all datapoints.
 
 \subsection{Meta-Prod2Vec}
 In section~\ref{sec:meta_prod2vec} we introduced the model architecture for Meta-Prod2Vec.
@@ -34,60 +62,99 @@ This is done since the input to the projection layer is a one-hot encoding of th
 As we have seen in equation~\ref{eq:meta_prod2vec_loss} the loss function would support a different weighting of the different types of side-information, however we found that this does not help the model learn better embeddings, therefore we use equal weights for all the types of side-information.
 \paragraph{Model training}
 The model is simply trained over two epochs.
-This decision was made because first the second pass over the data decreases the loss significantly, whereas the third pass does not.
+This decision was made because the second pass over the data decreases the loss significantly, whereas the third pass does not.
 
-\section{Implementation}
-\subsection{hgru4rec}
-The session based model was implemented in Tensorflow\footnote{\url{http://tensorflow.org}}.
-In figure~\ref{fig:hgru4rec_implementation} we can see an illustration of the different components of the code.
-
-\subsection{Meta-Prod2Vec}
-\begin{itemize}
-    \item we could make a diagram showing the different components
-\item Describe Class Diagram
-\item Describe prediction mode/training mode
-\item Describe problems that arose during training (extensive resources used for so many products and users)
-\end{itemize}
 \section{API}\label{sec:api}
-As described above the model is implemented in Tensorflow.
+The models are implemented in Tensorflow\footnote{\url{http://tensorflow.org}}.
 Tensorflow provides a mechanism to export tensorflow models as so called SavedModel\footnote{\url{https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/saved_model/README.md}}, which is the way Tensorflow serializes models universally.
-They also provide a premade Docker image\footnote{\url{https://hub.docker.com/r/tensorflow/serving}} which allows the model to be served as a REST or GRPC API.
-\begin{itemize}
-\item Describe API
-\end{itemize}
+As is commonly known Tensorflow builds models as a graph, where each operation is a node in the graph and referred to as an "operation"\footnote{\url{https://www.tensorflow.org/api_docs/python/tf/Operation}}.
+To serialize the model the export mechanism needs to know which operations represent the input and the output of the API respectively.
+This allows the export mechanism to strip away all nodes in the graph that are not used in the path in the graph from the input nodes to the output nodes, which greatly reduces the model size as well as the complexity.
+A good example of what is stripped away is the optimizer and the loss function nodes.
+In inference mode these are not useful anymore, therefore it makes sense to remove them from the graph.
+After the model is serialized it can be used together with a premade Docker image\footnote{\url{https://hub.docker.com/r/tensorflow/serving}} which allows the model to be served as a REST API.
+The inputs and outputs of the API are described in listing~\ref{code:tf_serve_input} and~\ref{code:tf_serve_output} respectively.
 
+
+\begin{minipage}{\linewidth}
+    \begin{lstlisting}[language=Python,frame=single,caption=TF Serve API Input,label=code:tf_serve_input]
+    {
+        "inputs": 
+        {
+            "EmbeddingIds": [<Input Product EmbeddingId>],
+            "SessionEmbeddings": [<Session Embedding>],
+            "UserEmbeddings": [<User Embedding>], # Only present if the user layer is used
+            "ProductEmbeddings": [<Product Embedding>], # Only present if product embeddings are used
+            "SessionChanged": [<Session Changed>]
+        }
+    }
+    \end{lstlisting}
+\end{minipage}
+
+\begin{minipage}{\linewidth}
+    \begin{lstlisting}[language=Python,frame=single,caption=TF Serve API Output,label=code:tf_serve_output]
+    {
+        "outputs": 
+        {
+            "SessionEmbeddings": [<Updated Session Embedding>],
+            "RankedPredictions": [<Ranked EmbeddingIds>]
+        }
+    }
+    \end{lstlisting}
+\end{minipage}
+
+As can be deduced by looking at these listings the exported model itself does not keep track session embeddings, instead it returns the updated embedding with the predictions.
+This decision was made because of the production setup.
+To enable easy horizontal scaling of the recommendation system, the deployed application should be as stateless as possible.
+Horizontal scaling is important in this case, since at peak times there thousands of users online, serving all those with a single instance of the model is not possible.
+This can be achieved by storing all the embeddings and embedding Ids in a key-value store which supports concurrent access.
+\par
+It also makes a lot of sense to abstract the concept of embeddings and embedding Ids from the online-shop requesting the recommendations.
+Therefore we implemented a middleware which takes features known to the online-shop and then prepares the features as well as transform the outputs for the model API.
+The middleware further access the afromentioned key-value store to keep session and user embeddings up to date.
+The input and output of API exposed by the middleware is described in listings~\ref{code:api_input} and~\ref{code:api_output} respectively.
+
+\begin{minipage}{\linewidth}
+    \begin{lstlisting}[language=Python,frame=single,caption=Middleware API Input,label=code:api_input]
+    {
+        "UserId": <UserId>,
+        "ProductId": <ProductId>,
+        "SessionId": <SessionId>
+    }
+    \end{lstlisting}
+\end{minipage}
+
+\begin{minipage}{\linewidth}
+    \begin{lstlisting}[language=Python,frame=single,caption=Middleware API Output,label=code:api_output]
+    {
+        "Predictions": [<Ranked ProductIds>]
+    }
+    \end{lstlisting}
+\end{minipage}
+This allows for a clear separation of domains, i.e. the online-shop does not know anything about the internals of the implementation of the model.
+Further since the key-value store supports concurrent access, both the middleware and the model API can be horizontally scaled without the need for any further control.
 \section{Production Setup}
 Digitec Galaxus AG is the largest online-retailer in Switzerland.
 They operate galaxus.ch and digitec.ch. The former is a general online-shop comparable to Amazon. 
 The latter is specialized in Electronics.
 Distributed on the different sections of the site there are several recommendation engines populating the content the users see.
-Examples are the landing page\todo{Add screenshot} and multiple engines on the product detail page\todo{Add screenshot}.
-% At the time of writing these engines were either recommending products or marketing pages. 
-% \par
-% Marketing Pages are a part of Digitec Galaxus' marketing strategy.
-% There is a editorial team which is separated by a chinese wall from the product departement.
-% This team writes independant reviews and other stories including current news.
-% These pages give the customers a second reason to interact with the platform, by establishing themselves as a news platform for users.
-% Therefore it makes sense to invest in recommendations of articles, since this allows the user to be familiar with the platform, and later preferring it for an online purchase.
-% These pages are not considered in this work, however the model should be applicable to marketing pages as well. 
+Examples are the landing page and multiple engines on the product detail page seen in~\ref{fig:homepage_recs} and~\ref{fig:product_detail_recs} respectively.
 
-% \subsection{Survival of the Fittest Framework}
-% As mentioned above there are multiple locations, such as the product detail page, in which recommendation engines can display content.
-% Moreover in each of these locations is it possible to have multiple spots which display content from recommendation engines.
-% For example on the product detail page there are multple spots displaying recommendations.
-% The Survival of the Fittest Framework is a system designed to decide which recommendation engine runs in which spot. \todo{Show an illustration for the framework}
-% The framework is a way of tackling the exploration exploitation tradeoff.
-% The definition which recommendation engine is allowed to be displayed in which spot is done manually, since not all combinations of the two make sense from a user experience perspective.
-% In principle popular recommendation engines get a proportionally higher probability to be selected when such a page is accessed by a specific user, while maintaining some restrictions.
-% This probability of being selected is defined as follows:\todo{Add specific formula}
-% \[
-%     p_{xij} = max(0.05, )
-% \]
-% Where $p_{xij}$ is the probability of recommendation engine $x$ being displayed on location $i$ and spot $j$.
-% This probability is computed constantly, automatically based on a stream of user clicks.
-% The Click-Through-Rate is the relevant metric for this computation because as described in~\ref{conversion_rate} this can only be estimated from the sales, since the true intent of the user cannot be reliably identified.
-% Therefore less popular or new recommendation engines still can be selected to be displayed, allowing for exploration of different approaches.
-% Should an engine become popular due to an improvement in the logic behind it, the probability of display increases automatically as more users interact with this element.
+\begin{figure}[ht]
+	\centering
+	\captionsetup{width=0.8\textwidth}
+    \includegraphics[width=\textwidth]{homepage-recs.png}
+    \caption{Recommendations on the homepage}
+    \label{fig:homepage_recs}
+\end{figure}
+
+\begin{figure}[ht]
+	\centering
+	\captionsetup{width=0.8\textwidth}
+    \includegraphics[width=\textwidth]{product-detail-recs.png}
+    \caption{Recommendations on the product detail page}
+    \label{fig:product_detail_recs}
+\end{figure}
 
 There is a framework that computes probabilities which specific recommendation engine provides the content for a specific location.
 Further the framework then chooses the content for each location based on the probabilities computed before and some other constraints such as minimum and maximum value.
@@ -96,7 +163,7 @@ The specific tests and the test setup is described in~\ref{sec:exp_setup}, for t
 Using the API containers described in~\ref{sec:api} we can serve these requests.
 The sequence-diagram in figure~\ref{fig:serving_recs} should give an overview on how the system is integrated in the production environment.
 
-\begin{figure}[H]
+\begin{figure}[ht]
 	\centering
 	\captionsetup{width=0.8\textwidth}
     \includegraphics[width=\textwidth]{serving-recommendations.png}
