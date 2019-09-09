@@ -14,13 +14,12 @@ Further we will test hgru4rec without the user layer, to verify the improvement 
 Therefore this work investigates 4 different architectures documented in~\ref{tab:model_archs}.
 \begin{table}[ht]
     \centering
-    \begin{tabular}{|c|c|c|c|}
-        \hline
-        Model Name & One-Hot & Embedding & User Layer \\ \hline
-        OnlySessionOneHot & x & - & - \\ \hline
-        OnlySessionEmbedding & - & x & - \\ \hline
-        WithUserOneHot & x & - & x \\ \hline
-        WithUserEmbedding & - & x & x \\ \hline
+    \begin{tabular}{llll}\toprule
+        \textbf{Model Name} & \textbf{One-Hot} & \textbf{Embedding} & \textbf{User Layer} \\ \midrule
+        OnlySessionOneHot & x & - & - \\
+        OnlySessionEmbedding & - & x & - \\
+        WithUserOneHot & x & - & x \\
+        WithUserEmbedding & - & x & x \\ \bottomrule
     \end{tabular}
     \caption{Model Architectures}
     \label{tab:model_archs}

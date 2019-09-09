@@ -25,17 +25,18 @@ Achieving a Recall@10 of 1 means the next clicked item is always in the top 10 p
 
 \begin{table}[t]
     \centering
-    \begin{tabular}{|c|c|c|c|c|}
-        \hline
-        User Layer & Loss Function & RNN Units & MRR@10 & Recall@10 \\ \hline
-        yes & Top 1 & 50 & ?? & ??\todo{Get number when model is finished} \\ \hline
-        yes & Cross Entropy & 100 & 0.058 & 0.167 \\ \hline
-        yes & Top 1 & 100 & 0.099 & 0.226 \\ \hline
-        yes & Top 1 & 250 & 0.073 & 0.167\todo{Verify number from most recent run} \\ \hline
-        no & Top 1 & 50 & ?? & ??\todo{Get number when model is finished} \\ \hline
-        no & Cross Entropy & 100 & 0.069 & 0.193 \\ \hline
-        no & Top 1 & 100 & 0.112 & 0.258 \\ \hline
-        no & Top 1 & 250 & 0.121 & 0.278 \\ \hline
+    \begin{tabular}{lllll}\toprule
+        \textbf{User Layer} & \textbf{Loss Function} & \textbf{RNN Units} & \textbf{MRR@10} & \textbf{Recall@10} \\ \midrule
+        yes & Top 1 & 25 & ?? & ??\todo{Get number when model is finished} \\
+        yes & Top 1 & 50 & ?? & ??\todo{Verify number from most recent run} \\ 
+        yes & Cross Entropy & 100 & 0.058 & 0.167 \\ 
+        yes & Top 1 & 100 & 0.099 & 0.226 \\ 
+        yes & Top 1 & 250 & 0.073 & 0.167\todo{Verify number from most recent run} \\ 
+        no & Top 1 & 25 & ?? & ??\todo{Get number when model is finished} \\ 
+        no & Top 1 & 50 & 0.090 & 0.215 \\ 
+        no & Cross Entropy & 100 & 0.069 & 0.193 \\ 
+        no & Top 1 & 100 & 0.112 & 0.258 \\ 
+        no & Top 1 & 250 & 0.121 & 0.278 \\ \bottomrule
     \end{tabular}
     \caption{Measurements on MIDI Dataset (One-Hot)}
     \label{tab:midi_dataset_measurements}
@@ -47,15 +48,15 @@ As can be seen the Top 1 loss introduced by the authors of~\cite{gru4rec} perfor
 This is because the cross entropy loss essentially compares the probabilities that are predicted by the model with the "real" probability distribution, in this case with the one-hot encoding of the label.
 In contrast the Top 1 loss is a strict ranking loss, only concerned with the position of the label in the predictions, which better models the task of recommendation.
 Further it can be seen that the improvement of using 250 units per GRU instead of 100 is marginal, therefore larger models were not tested.
+\todo{Mention results from smallest models}
 Therefore the models using 250 units per GRU were chosen to be trained on the MAXI dataset in addition to the ones using the product embedding.
 Finally it can be seen that the models using the user level GRU perform approximately the same, sometimes even worse than the models using only the session level GRU, the reason for this will be discussed in the next chapter.
 \begin{table}[t]
     \centering
-    \begin{tabular}{|c|c|c|c|c|}
-        \hline
-        User Layer & RNN Units & MRR@10 & Recall@10 \\ \hline
-        yes & 250 & 0.055 & 0.138 \\ \hline
-        no & 250 & 0.061 & 0.146 \\ \hline
+    \begin{tabular}{llll}\toprule
+        \textbf{User Layer} & \textbf{RNN Units} & \textbf{MRR@10} & \textbf{Recall@10} \\ \midrule
+        yes & 250 & 0.055 & 0.138 \\ 
+        no & 250 & 0.061 & 0.146 \\ \bottomrule
     \end{tabular}
     \caption{Measurements on MAXI Dataset (One-Hot)}
     \label{tab:maxi_dataset_measurements_one_hot}
@@ -65,17 +66,16 @@ There is nothing surprising here, again we can see that the user-level GRU appar
 
 \begin{table}[t]
     \centering
-    \begin{tabular}{|c|c|c|c|c|}
-        \hline
-        User Layer & RNN Units & MRR@10 & Recall@10 \\ \hline
-        no & 25 & 0.012 & 0.025 \\ \hline
-        no & 50 & 0.011 & 0.22 \\ \hline
-        no & 100 & 0.012 & 0.025 \\ \hline
-        no & 250 & diverged & diverged \\ \hline
-        yes & 25 & 0.013 & 0.22 \\ \hline
-        yes & 50 & 0.011 & 0.023 \\ \hline
-        yes & 100 & 0.11 & 0.023 \\ \hline
-        yes & 250 & diverged & diverged \\ \hline
+    \begin{tabular}{llll}\toprule
+        \textbf{User Layer} & \textbf{RNN Units} & \textbf{MRR@10} & \textbf{Recall@10} \\ \midrule
+        no & 25 & 0.012 & 0.025 \\ 
+        no & 50 & 0.011 & 0.22 \\ 
+        no & 100 & 0.012 & 0.025 \\ 
+        no & 250 & diverged & diverged \\ 
+        yes & 25 & 0.013 & 0.22 \\ 
+        yes & 50 & 0.011 & 0.023 \\ 
+        yes & 100 & 0.11 & 0.023 \\ 
+        yes & 250 & diverged & diverged \\ \bottomrule
     \end{tabular}
     \caption{Measurements on MAXI Dataset (Embedding)}
     \label{tab:maxi_dataset_measurements_embedding}
@@ -118,30 +118,31 @@ However this is one of the reasons why production testing makes sense for recomm
 \subsection{Measurements}
 In table~\ref{tab:online_measurements} we can see the measurements for the different variants of the model in the online setting, as well as the same metric for different models that have been displayed in the same slot as the one we tested in.
 We focus on the Click-Through rate in this experiment, since as mentioned before the conversion rate is difficult to compute, and due to time constraints we could not wait 14 days after the test was finished to get a good estimation of this metric.
-The test was executed on approximately 1.3 Million sessions.
+The test was executed on approximately 1.3 Million sessions, each of the variants, as well as Recommendations AI received 20\% of the total traffic coming to the product detail page.
 The metrics for each of the recommendation engines is averaged over all the sessions.
 \begin{table}[t]
     \centering
-    \begin{tabular}{|c|c|}
-        \hline
-        Model Name & CTR \\ \hline
-        OnlySessionOneHot & 2.1\% \\ \hline
-        OnlySessionEmbedding & 0.85\% \\ \hline
-        WithUserOneHot & 2\% \\ \hline
-        WithUserEmbedding & 0.9\% \\ \hline
-        Recommendations AI & 5.55\% \\ \hline
-        Often Bought Together & 0.91\% \\ \hline
-        Similar Products & 1.19\% \\ \hline
+    \begin{tabular}{ll}\toprule
+        \textbf{Model Name} & \textbf{CTR} \\ \midrule
+        OnlySessionOneHot & 2.1\% \\
+        OnlySessionEmbedding & 0.85\% \\
+        WithUserOneHot & 2\% \\
+        WithUserEmbedding & 0.9\% \\
+        Recommendations AI & 5.55\% \\
+        OftenBoughtTogether & 0.91\%* \\
+        SimilarProducts & 1.19\%* \\ \bottomrule
     \end{tabular}
     \caption{Measurements on Live Data}
     \label{tab:online_measurements}
 \end{table}
-Often Bought Together is a simple model counting which products are bought with which other products.
+* Values are not based on the same test, but instead on more than 2 years of data.
+\par
+OftenBoughtTogether is a simple heuristic counting which products are bought with which other products\todo{other formulation}.
 It is very similar to the one described in section~\ref{sec:often_bought_together}.
 Similar Products is a recommendation engine also using the product embeddings produced by Meta-Prod2Vec.
 This engine will recommend the items that are closest to the currently active item in the embedding space.
 \par
 As can be seen in table~\ref{tab:online_measurements} nothing comes close to achieving the same result as Recommendations AI.
 This is a proprietary system which is acessed directly via an API, however the data that is ingested by this system is very diverse.
-The system does not only consider the currently viewed item and the active user, but also takes into account trends, recent sales and a lot of other information.
+The system does not only consider the currently viewed item and the active user, but also takes into account trends, recent sales, product information and more.
 However when compared to more classical approaches the session-based approach performs much better, at least when using the one-hot encoding, since also in this setting we can see that the models using the product embedding perform much worse.

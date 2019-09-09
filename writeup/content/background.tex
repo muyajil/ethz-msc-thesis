@@ -223,12 +223,12 @@ One possibility would be to just assign integer ids to the different colors as s
 
 \begin{table}[ht]
     \centering
-    \begin{tabular}{c|c}
-    Color & Id \\ \hline
+    \begin{tabular}{ll}\toprule
+    \textbf{Color} & \textbf{Id} \\ \midrule
     Red & 0 \\
     Green & 1 \\
     Blue & 2 \\
-    Yellow & 3
+    Yellow & 3 \\ \bottomrule
     \end{tabular}
     \caption{Integer Ids for Colors}
     \label{tab:id_encoding}
@@ -244,12 +244,12 @@ The same colors encoded in a one-hot encoding can be seen in table~\ref{tab:one_
 
 \begin{table}[ht]
     \centering
-    \begin{tabular}{c|c}
-    Color & One-Hot Encoding \\ \hline
+    \begin{tabular}{ll}\toprule
+        \textbf{Color} & \textbf{One-Hot Encoding} \\ \midrule
     Red & $[1,0,0,0]$ \\
     Green & $[0,1,0,0]$ \\
     Blue & $[0,0,1,0]$ \\
-    Yellow & $[0,0,0,1]$
+    Yellow & $[0,0,0,1]$ \\ \bottomrule
     \end{tabular}
     \caption{One-Hot Encoding for Colors}
     \label{tab:one_hot_encoding}
@@ -272,12 +272,13 @@ In table~\ref{tab:embedding} we can see a lower dimensional representation of th
 Further all the representations still have the same magnitude, therefore not triggering a stronger signal depending on the color.
 \begin{table}[ht]
     \centering
-    \begin{tabular}{c|c}
-    Color & Embedding \\ \hline
+    \begin{tabular}{ll}\toprule
+    
+    \textbf{Color} & \textbf{Embedding} \\ \midrule
     Red & $[1,0,0]$ \\
     Green & $[0,\sqrt{0.5},\sqrt{0.5}]$ \\
     Blue & $[0,1,0]$ \\
-    Yellow & $[0,0,1]$
+    Yellow & $[0,0,1]$ \\ \bottomrule
     \end{tabular}
     \caption{Possible Embedding for Colors}
     \label{tab:embedding}
