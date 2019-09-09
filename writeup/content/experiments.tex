@@ -120,7 +120,7 @@ In table~\ref{tab:online_measurements} we can see the measurements for the diffe
 We focus on the Click-Through rate in this experiment, since as mentioned before the conversion rate is difficult to compute, and due to time constraints we could not wait 14 days after the test was finished to get a good estimation of this metric.
 The test was executed on approximately 1.3 Million sessions, each of the variants, as well as Recommendations AI received 20\% of the total traffic coming to the product detail page.
 The metrics for each of the recommendation engines is averaged over all the sessions.
-\begin{table}[ht]
+\begin{table}[t]
     \centering
     \begin{tabular}{lr}\toprule
         \textbf{Model Name} & \textbf{CTR} \\ \midrule
@@ -132,7 +132,7 @@ The metrics for each of the recommendation engines is averaged over all the sess
         OftenBoughtTogether & 0.91\%* \\
         SimilarProducts & 1.19\%* \\ \bottomrule
     \end{tabular}
-    \caption{Measurements on Live Data \\ (* Values are not based on the same test, but instead on more than 2 years of data.)}
+    \caption{Measurements on Live Data (* Values are not based on the same test, but instead on more than 2 years of data.)}
     \label{tab:online_measurements}
 \end{table}
 \par
