@@ -25,16 +25,16 @@ Achieving a Recall@10 of 1 means the next clicked item is always in the top 10 p
 
 \begin{table}[t]
     \centering
-    \begin{tabular}{lllll}\toprule
+    \begin{tabular}{llrrr}\toprule
         \textbf{User Layer} & \textbf{Loss Function} & \textbf{RNN Units} & \textbf{MRR@10} & \textbf{Recall@10} \\ \midrule
-        yes & Top 1 & 25 & ?? & ??\todo{Get number when model is finished} \\
-        yes & Top 1 & 50 & ?? & ??\todo{Verify number from most recent run} \\ 
         yes & Cross Entropy & 100 & 0.058 & 0.167 \\ 
+        no & Cross Entropy & 100 & 0.069 & 0.193 \\
+        yes & Top 1 & 25 & ?? & ??\todo{Get number when model is finished} \\
+        yes & Top 1 & 50 & 0.081 & 0.202 \\ 
         yes & Top 1 & 100 & 0.099 & 0.226 \\ 
         yes & Top 1 & 250 & 0.073 & 0.167\todo{Verify number from most recent run} \\ 
         no & Top 1 & 25 & ?? & ??\todo{Get number when model is finished} \\ 
-        no & Top 1 & 50 & 0.090 & 0.215 \\ 
-        no & Cross Entropy & 100 & 0.069 & 0.193 \\ 
+        no & Top 1 & 50 & 0.090 & 0.215 \\  
         no & Top 1 & 100 & 0.112 & 0.258 \\ 
         no & Top 1 & 250 & 0.121 & 0.278 \\ \bottomrule
     \end{tabular}
@@ -53,7 +53,7 @@ Therefore the models using 250 units per GRU were chosen to be trained on the MA
 Finally it can be seen that the models using the user level GRU perform approximately the same, sometimes even worse than the models using only the session level GRU, the reason for this will be discussed in the next chapter.
 \begin{table}[t]
     \centering
-    \begin{tabular}{llll}\toprule
+    \begin{tabular}{lrrr}\toprule
         \textbf{User Layer} & \textbf{RNN Units} & \textbf{MRR@10} & \textbf{Recall@10} \\ \midrule
         yes & 250 & 0.055 & 0.138 \\ 
         no & 250 & 0.061 & 0.146 \\ \bottomrule
@@ -66,15 +66,15 @@ There is nothing surprising here, again we can see that the user-level GRU appar
 
 \begin{table}[t]
     \centering
-    \begin{tabular}{llll}\toprule
+    \begin{tabular}{lrrr}\toprule
         \textbf{User Layer} & \textbf{RNN Units} & \textbf{MRR@10} & \textbf{Recall@10} \\ \midrule
         no & 25 & 0.012 & 0.025 \\ 
-        no & 50 & 0.011 & 0.22 \\ 
+        no & 50 & 0.011 & 0.022 \\ 
         no & 100 & 0.012 & 0.025 \\ 
         no & 250 & diverged & diverged \\ 
-        yes & 25 & 0.013 & 0.22 \\ 
+        yes & 25 & 0.013 & 0.022 \\ 
         yes & 50 & 0.011 & 0.023 \\ 
-        yes & 100 & 0.11 & 0.023 \\ 
+        yes & 100 & 0.011 & 0.023 \\ 
         yes & 250 & diverged & diverged \\ \bottomrule
     \end{tabular}
     \caption{Measurements on MAXI Dataset (Embedding)}
@@ -120,9 +120,9 @@ In table~\ref{tab:online_measurements} we can see the measurements for the diffe
 We focus on the Click-Through rate in this experiment, since as mentioned before the conversion rate is difficult to compute, and due to time constraints we could not wait 14 days after the test was finished to get a good estimation of this metric.
 The test was executed on approximately 1.3 Million sessions, each of the variants, as well as Recommendations AI received 20\% of the total traffic coming to the product detail page.
 The metrics for each of the recommendation engines is averaged over all the sessions.
-\begin{table}[t]
+\begin{table}[ht]
     \centering
-    \begin{tabular}{ll}\toprule
+    \begin{tabular}{lr}\toprule
         \textbf{Model Name} & \textbf{CTR} \\ \midrule
         OnlySessionOneHot & 2.1\% \\
         OnlySessionEmbedding & 0.85\% \\
@@ -132,10 +132,9 @@ The metrics for each of the recommendation engines is averaged over all the sess
         OftenBoughtTogether & 0.91\%* \\
         SimilarProducts & 1.19\%* \\ \bottomrule
     \end{tabular}
-    \caption{Measurements on Live Data}
+    \caption{Measurements on Live Data \\ (* Values are not based on the same test, but instead on more than 2 years of data.)}
     \label{tab:online_measurements}
 \end{table}
-* Values are not based on the same test, but instead on more than 2 years of data.
 \par
 OftenBoughtTogether is a simple heuristic counting which products are bought with which other products\todo{other formulation}.
 It is very similar to the one described in section~\ref{sec:often_bought_together}.
