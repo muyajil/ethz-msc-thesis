@@ -1,24 +1,24 @@
 \chapter{Introduction}
-
-\begin{itemize}
-\item Recommender System are a field in machine learning that get more and more attention
-\item In principle the goal of a recommender system is to recommend items (in the case of an e-commerce system products) to users
-\item The idea is that the system helps the user navigate the mass of products available and to show the user what is relevant
-\item A recomender system can be tuned to optimize for different metrics such as click through rate, conversion rate etc.
-\item In the past there have been mainly to approaches to recommender systems user based and item based
-\item In the last years there have been more and more proposals for session based approaches (refer to paper that does the survey)
-\item Specifically GRU4Rec has gained attention as a RNN based approach to solving this problem
-\item In a session based setting we try to model the sequence of events a user makes when he browses the product catalog instead of items or users themselves.
-\item This has the following advantages: Usually we have a lot of users that only visit the site once or twice a year, these users are very difficult to model. The same goes for products, there are a lot of products that have limited attention from the userbase, therefore it is difficult to get a useful representation for products like this. 
-\item In a session based setting we model the sequence of events, which is more useful since there is a lot more data, and sessions are comparable even if we do not know which user is online.
-\item Session based approaches work in both settings where we dont know the user and where we know the user
-\item Item based are for unkown users and user based for known users
-\item Here we need to state the hypothesis -> We are looking to improve personalized session based recommendations by using pre trained embeddings for products.
-\item The goal of the thesis is twofold: 
-\begin{itemize}
-    \item First we want to explore the capabilities of such a system in a production setting with real world data. Are we really better than simple approaches like "often bought together"? 
-    \item Also we want to compare it to a more sophisticated system that is a blackbox and consumed as a service provided by Google.
-    \item Third, since this is an RNN approach we want to find out if we can improve the system by applying the GAN framework in form of professor forcing
-    \item Fourth, the system inherently produces embeddings for products and users, we want to find out if we can improve the overall performance if we use a pretrained product embedding which captures the semantic similarity of products
-\end{itemize} 
-\end{itemize}
+Recommendation systems are a field in machine learning that get more and more attention.
+The most general definition of a recommendation system is a system that aids a user in some kind of decision process.
+Usually a very large number of choices is available in such a decision process, such as which music to listen to from a selection of millions of tracks, or which products to buy from a catalog of millions of products.
+Depending on the recommendation system, information about the items, about the users, and about the interaction of users with items is taken into account.
+The first approaches to recommendation engines mainly used interaction data, since the tools available at that time did not allow for an incorporation of image, text, or side-information.
+In recent years deep neural networks enabled the use of more types of datapoints, such as images and text for example.
+Further recurrent neural networks allowed to explicitly model sequence data, which opened up many possibilities in this space, since users tend to change over time.
+Specifically GRU4Rec (c.f.~\cite{gru4rec}) gained attention as an RNN based approach to model session data.
+In this setting we try to model the sequence of events a user makes when he browses some catalog, instead of just static information about items and users.
+Another advantage would be that in a session-based approach the identification of the user is not necessary, because identifying users is a difficult task in itself.
+Since the session serves as a basis for recommendations, the user can be used to additionally improve the results, but is not necessary for a recommendation.
+This is in contrast to other methods such as collaborative filtering where the user must be known.
+In~\cite{hierarchical} a model is proposed that does exactly that, it uses GRU4Rec as a basis and extends it with a user-level representation.
+\par
+As mentioned before DNNs have allowed the ingestion of other types of datapoints.
+This allows the vectorization of structured data, such as representing items in a euclidian vector space.
+The advantage of this is that the abstract concept of similarity of items can be quantified.
+This allows to better understand and navigate a large catalog of items.
+The authors of~\cite{meta_prod2vec} introduced a model that can just do that.
+By injesting session based data about the items, as well as categorical side information the model fits a fixed sized vector in an euclidian space for each item.
+This model fits these vectors such that the similar items receive a similar representation.
+\par
+The goal of this work is to explore the possibility of combining the two conecpts such that a session-based recommendation system can make use of the quantifiable similarity between items.

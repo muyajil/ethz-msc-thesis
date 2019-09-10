@@ -2,7 +2,7 @@ actor "++User++" as u
 participant "++Online-Shop++" as os
 participant "++Personalization Infrastructure++" as p
 participant "++A/B Testing Engine++" as ab
-participant "++Flask API++" as fa
+participant "++Middleware++" as fa
 participant "++TF Serve API++" as tf
 participant "++Google Cloud Datastore++" as ds
 u->os:++Request some page++
