@@ -16,11 +16,11 @@ Further the one-hot encoding variants used so much time and resources, only the 
 Finally the models that used the product embedding trained much faster, therefore there were multiple versions tested for the MAXI dataset.
 \par
 For each model we measured two metrics of the validation set, since each of the metrics measures a different aspect of the performance of the model.
-Specifically Recall@10 was measured to determine in how many cases the top 10 recommended products contained the product that was actually clicked by the user.
-MRR@10 was measured to determine where the product was ranked in the top 10 predictions.
+Specifically Recall@10 was measured to determine in how many cases the TOP10 recommended products contained the product that was actually clicked by the user.
+MRR@10 was measured to determine where the product was ranked in the TOP10 predictions.
 A perfect model would achieve a value of 1 in both metrics, i.e. the next clicked product is always the top prediction.
 However while MRR@10 is the more informative metrics of the two, giving insight in the ranking of "good" predictions, Recall@10 is the more important one.
-Achieving a Recall@10 of 1 means the next clicked item is always in the top 10 predictions, which means the user will see the recommendation, whether it is the top prediction or the fifth, which essentially is the goal of this task.
+Achieving a Recall@10 of 1 means the next clicked item is always in the TOP10 predictions, which means the user will see the recommendation, whether it is the top prediction or the fifth, which essentially is the goal of this task.
 \subsection{Measurements}
 
 \begin{table}[t]
@@ -29,14 +29,14 @@ Achieving a Recall@10 of 1 means the next clicked item is always in the top 10 p
         \textbf{User Layer} & \textbf{Loss Function} & \textbf{RNN Units} & \textbf{MRR@10} & \textbf{Recall@10} \\ \midrule
         yes & Cross Entropy & 100 & 0.058 & 0.167 \\ 
         no & Cross Entropy & 100 & 0.069 & 0.193 \\ \midrule
-        yes & Top 1 & 25 & 0.068 & 0.174 \\
-        yes & Top 1 & 50 & 0.081 & 0.202 \\ 
-        yes & Top 1 & 100 & 0.099 & 0.226 \\ 
-        yes & Top 1 & 250 & 0.073 & 0.167\todo{Verify number from most recent run} \\ \midrule
-        no & Top 1 & 25 & 0.073 & 0.180 \\ 
-        no & Top 1 & 50 & 0.090 & 0.215 \\  
-        no & Top 1 & 100 & 0.112 & 0.258 \\ 
-        no & Top 1 & 250 & 0.121 & 0.278 \\ \bottomrule
+        yes & TOP1 & 25 & 0.068 & 0.174 \\
+        yes & TOP1 & 50 & 0.081 & 0.202 \\ 
+        yes & TOP1 & 100 & 0.099 & 0.226 \\ 
+        yes & TOP1 & 250 & 0.073 & 0.167\todo{Verify number from most recent run} \\ \midrule
+        no & TOP1 & 25 & 0.073 & 0.180 \\ 
+        no & TOP1 & 50 & 0.090 & 0.215 \\  
+        no & TOP1 & 100 & 0.112 & 0.258 \\ 
+        no & TOP1 & 250 & 0.121 & 0.278 \\ \bottomrule
     \end{tabular}
     \caption{Measurements on MIDI Dataset (One-Hot)}
     \label{tab:midi_dataset_measurements}
@@ -44,9 +44,9 @@ Achieving a Recall@10 of 1 means the next clicked item is always in the top 10 p
 
 The measurements on the MIDI dataset are summarized in table~\ref{tab:midi_dataset_measurements}.
 As mentioned above these are all measurements from the models using the one-hot encoding as input.
-As can be seen the Top 1 loss introduced by the authors of~\cite{gru4rec} performs better than the cross entropy loss.
+As can be seen the TOP1 loss introduced by the authors of~\cite{gru4rec} performs better than the cross entropy loss.
 This is because the cross entropy loss essentially compares the probabilities that are predicted by the model with the "real" probability distribution, in this case with the one-hot encoding of the label.
-In contrast the Top 1 loss is a strict ranking loss, only concerned with the position of the label in the predictions, which better models the task of recommendation.
+In contrast the TOP1 loss is a strict ranking loss, only concerned with the position of the label in the predictions, which better models the task of recommendation.
 Further it can be seen that the improvement of using 250 units per GRU instead of 100 is marginal, therefore larger models were not tested.
 Therefore the models using 250 units per GRU were chosen to be trained on the MAXI dataset in addition to the ones using the product embedding.
 Finally it can be seen that the models using the user level GRU perform approximately the same, sometimes even worse than the models using only the session level GRU, the reason for this will be discussed in the next chapter.
@@ -123,13 +123,13 @@ The metrics for each of the recommendation engines is averaged over all the sess
     \centering
     \begin{tabular}{lr}\toprule
         \textbf{Model Name} & \textbf{CTR} \\ \midrule
-        OnlySessionOneHot & 2.1\% \\
-        OnlySessionEmbedding & 0.85\% \\
-        WithUserOneHot & 2\% \\
-        WithUserEmbedding & 0.9\% \\
         Recommendations AI & 5.55\% \\
+        OnlySessionOneHot & 2.1\% \\
+        WithUserOneHot & 2\% \\
+        SimilarProducts & 1.19\%* \\
         OftenBoughtTogether & 0.91\%* \\
-        SimilarProducts & 1.19\%* \\ \bottomrule
+        WithUserEmbedding & 0.9\% \\
+        OnlySessionEmbedding & 0.85\% \\ \bottomrule
     \end{tabular}
     \caption{Measurements on Live Data (* Values are not based on the same test, but instead on more than one year of data.)}
     \label{tab:online_measurements}

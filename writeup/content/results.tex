@@ -18,7 +18,7 @@ A bounce rate analysis shows, that 46\% of users arriving on the product detail 
 Each of these visits still produced a session, this would explain the shorter sessions in our dataset.
 Of course it is clear that even when identifying the user, by looking at one product there is not much information to carry over to the next session.
 Another issue is that there are very many users which do have very few sessions. 
-\begin{figure}[t]
+\begin{figure}[ht]
 	\centering
 	\captionsetup{width=0.8\textwidth}
     \includegraphics[width=\textwidth]{histo_user_visits.png}
@@ -35,7 +35,7 @@ Because of that the user embedding will not change much from its initial random 
 \par
 The second thing is that the product embedding greatly worsens the results in the offline as well as the online setting.
 The reason for this is similar as explained above.
-\begin{figure}[t]
+\begin{figure}[ht]
 	\centering
 	\captionsetup{width=0.8\textwidth}
     \includegraphics[width=\textwidth]{histo_product_visits.png}
@@ -44,7 +44,7 @@ The reason for this is similar as explained above.
 \end{figure}
 In figure~\ref{fig:histo_product_events} we can see the same long tail effect as with the users.
 Of the approximately 470K products about 320K have at most 100 events recorded.
-\begin{figure}[t]
+\begin{figure}[ht]
 	\centering
 	\captionsetup{width=0.8\textwidth}
     \includegraphics[width=\textwidth]{products_pca.png}
@@ -53,7 +53,7 @@ Of the approximately 470K products about 320K have at most 100 events recorded.
 \end{figure}
 In figure~\ref{fig:products_pca} we can see a PCA analysis of the product embeddings.
 As can be seen in the PCA there is a separation of datapoints in the first principal component.
-\begin{figure}[t]
+\begin{figure}[ht]
 	\centering
 	\captionsetup{width=0.8\textwidth}
     \includegraphics[width=\textwidth]{products_pca_groups.png}
@@ -62,7 +62,7 @@ As can be seen in the PCA there is a separation of datapoints in the first princ
 \end{figure}
 In figure~\ref{fig:products_pca_groups} we can see the percentage of datapoints that have the first principal component smaller than 0, grouped by the number of events per product.
 It is clear from this that the products that generate a lot of events can clearly be separated from the ones producing few events.
-That means again that the majority of the product embeddings does not move much from the initial random initialization.
+That means again that the majority of the product embeddings does not move much from the initial random initialization, since the majority of the products have less than 100 events.
 Therefore it can happen that for example a dining table with very few visits is very similar to a shoe with few visits, since both vectors are initialized uniformly at random drawing values from the same distribution.
 The problem with this is the signal that is propagated to the GRU.
 When using the one-hot encoding there is always a clear signal which product was the one that was viewed, with the product embedding this is not the case.
