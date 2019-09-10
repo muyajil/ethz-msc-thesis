@@ -28,12 +28,12 @@ Achieving a Recall@10 of 1 means the next clicked item is always in the top 10 p
     \begin{tabular}{llrrr}\toprule
         \textbf{User Layer} & \textbf{Loss Function} & \textbf{RNN Units} & \textbf{MRR@10} & \textbf{Recall@10} \\ \midrule
         yes & Cross Entropy & 100 & 0.058 & 0.167 \\ 
-        no & Cross Entropy & 100 & 0.069 & 0.193 \\
-        yes & Top 1 & 25 & ?? & ??\todo{Get number when model is finished} \\
+        no & Cross Entropy & 100 & 0.069 & 0.193 \\ \midrule
+        yes & Top 1 & 25 & 0.068 & 0.174 \\
         yes & Top 1 & 50 & 0.081 & 0.202 \\ 
         yes & Top 1 & 100 & 0.099 & 0.226 \\ 
-        yes & Top 1 & 250 & 0.073 & 0.167\todo{Verify number from most recent run} \\ 
-        no & Top 1 & 25 & ?? & ??\todo{Get number when model is finished} \\ 
+        yes & Top 1 & 250 & 0.073 & 0.167\todo{Verify number from most recent run} \\ \midrule
+        no & Top 1 & 25 & 0.073 & 0.180 \\ 
         no & Top 1 & 50 & 0.090 & 0.215 \\  
         no & Top 1 & 100 & 0.112 & 0.258 \\ 
         no & Top 1 & 250 & 0.121 & 0.278 \\ \bottomrule
@@ -48,7 +48,6 @@ As can be seen the Top 1 loss introduced by the authors of~\cite{gru4rec} perfor
 This is because the cross entropy loss essentially compares the probabilities that are predicted by the model with the "real" probability distribution, in this case with the one-hot encoding of the label.
 In contrast the Top 1 loss is a strict ranking loss, only concerned with the position of the label in the predictions, which better models the task of recommendation.
 Further it can be seen that the improvement of using 250 units per GRU instead of 100 is marginal, therefore larger models were not tested.
-\todo{Mention results from smallest models}
 Therefore the models using 250 units per GRU were chosen to be trained on the MAXI dataset in addition to the ones using the product embedding.
 Finally it can be seen that the models using the user level GRU perform approximately the same, sometimes even worse than the models using only the session level GRU, the reason for this will be discussed in the next chapter.
 \begin{table}[t]
@@ -71,7 +70,7 @@ There is nothing surprising here, again we can see that the user-level GRU appar
         no & 25 & 0.012 & 0.025 \\ 
         no & 50 & 0.011 & 0.022 \\ 
         no & 100 & 0.012 & 0.025 \\ 
-        no & 250 & diverged & diverged \\ 
+        no & 250 & diverged & diverged \\ \midrule
         yes & 25 & 0.013 & 0.022 \\ 
         yes & 50 & 0.011 & 0.023 \\ 
         yes & 100 & 0.011 & 0.023 \\ 
@@ -132,11 +131,12 @@ The metrics for each of the recommendation engines is averaged over all the sess
         OftenBoughtTogether & 0.91\%* \\
         SimilarProducts & 1.19\%* \\ \bottomrule
     \end{tabular}
-    \caption{Measurements on Live Data (* Values are not based on the same test, but instead on more than 2 years of data.)}
+    \caption{Measurements on Live Data (* Values are not based on the same test, but instead on more than one year of data.)}
     \label{tab:online_measurements}
 \end{table}
 \par
-OftenBoughtTogether is a simple heuristic counting which products are bought with which other products\todo{other formulation}.
+OftenBoughtTogether is a simple heuristic counting co-occurences of products in sales orders.
+Based on these counts products which are sold most together with the currently active item are recommended.
 It is very similar to the one described in section~\ref{sec:often_bought_together}.
 Similar Products is a recommendation engine also using the product embeddings produced by Meta-Prod2Vec.
 This engine will recommend the items that are closest to the currently active item in the embedding space.
