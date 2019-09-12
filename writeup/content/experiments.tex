@@ -16,11 +16,11 @@ Further the one-hot encoding variants used so much time and resources, only the 
 Finally the models that used the product embedding trained much faster, therefore there were multiple versions tested for the MAXI dataset.
 \par
 For each model we measured two metrics of the validation set, since each of the metrics measures a different aspect of the performance of the model.
-Specifically Recall@10 was measured to determine in how many cases the TOP10 recommended products contained the product that was actually clicked by the user.
-MRR@10 was measured to determine where the product was ranked in the TOP10 predictions.
+Specifically Recall@10 was measured to determine in how many cases the Top 10 recommended products contained the product that was actually clicked by the user.
+MRR@10 was measured to determine where the product was ranked in the Top 10 predictions.
 A perfect model would achieve a value of 1 in both metrics, i.e. the next clicked product is always the top prediction.
 However while MRR@10 is the more informative metrics of the two, giving insight in the ranking of "good" predictions, Recall@10 is the more important one.
-Achieving a Recall@10 of 1 means the next clicked item is always in the TOP10 predictions, which means the user will see the recommendation, whether it is the top prediction or the fifth, which essentially is the goal of this task.
+Achieving a Recall@10 of 1 means the next clicked item is always in the Top 10 predictions, which means the user will see the recommendation, whether it is the top prediction or the fifth, which essentially is the goal of this task.
 \subsection{Measurements}
 
 \begin{table}[t]
