@@ -1,25 +1,25 @@
 \chapter{Introduction}
-Recommendation systems are a field in machine learning that get more and more attention.
+Given the fact that targeted addressing of customers is becoming increasingly important, recommendation systems gain equally in relevance.
+Recommendation systems are a field in machine learning that attracts increasing attention.
 The most general definition of a recommendation system is a system that aids a user in some kind of decision process.
-Usually a very large number of choices is available in such a decision process, such as which music to listen to from a selection of millions of tracks, or which products to buy from a catalog of millions of products.
+Usually a tremendously large number of choices is available in such a decision process, such as which music to listen to from a selection of millions of tracks, or which products to buy from a catalog of millions of products.
 Depending on the recommendation system, information about the items, about the users, and about the interaction of users with items is taken into account.
 \par
 The first approaches to recommendation engines mainly used interaction data, since the tools available at that time did not allow for an incorporation of image, text, or side-information.
-In recent years deep neural networks enabled the use of more types of datapoints, such as images and text for example.
-Further recurrent neural networks allowed to explicitly model sequence data, which opened up many possibilities in this space, since users tend to change over time.
+In recent years, deep neural networks (DNNs) enabled the use of more types of datapoints, such as images and text.
+Recurrent neural networks (RNNs, c.f.~\ref{rnn}) allowed to explicitly model sequence data, which allowed a multitude of new possibilities in this field, since users tend to change their behavior over time.
 Specifically GRU4Rec (c.f.~\cite{gru4rec}) gained attention as an RNN based approach to model session data.
-In this setting we try to model the sequence of events a user makes when he browses some catalog, instead of just static information about items and users.
+In this setting, we try to model the sequence of events a user makes when he browses some catalog, instead of just static information about items and users.
 Another advantage would be that in a session-based approach the identification of the user is not necessary, because identifying users is a difficult task in itself.
-Since the session serves as a basis for recommendations, the user can be used to additionally improve the results, but is not necessary for a recommendation.
+Since the session serves as a basis for recommendations, the user can be taken into consideration to additionally improve the results, but is not necessary for a recommendation.
 This is in contrast to other methods such as collaborative filtering where the user must be known.
 In~\cite{hierarchical} a model is proposed that does exactly that, it uses GRU4Rec as a basis and extends it with a user-level representation.
 \par
-As mentioned before DNNs have allowed the ingestion of other types of datapoints.
-This allows the vectorization of structured data, such as representing items in a euclidian vector space.
-The advantage of this is that the abstract concept of similarity of items can be quantified.
-This allows to better understand and navigate a large catalog of items.
-The authors of~\cite{meta_prod2vec} introduced a model that can just do that.
-By injesting session based data about the items, as well as categorical side information the model fits a fixed sized vector in an euclidian space for each item.
-This model fits these vectors such that the similar items receive a similar representation.
+As mentioned before, DNNs have allowed the ingestion of other types of datapoints.
+This allows the vectorization of structured data, as for example representing items in a euclidian vector space.
+This type of system provides the advantage of quantifying the abstract concept of similarity.
+As a consequence, large amounts of items can be better understood and navigated
+The authors of~\cite{meta_prod2vec} introduced a model that can performing this function.
+By injesting session based data about the items as well as categorical side information, the model produces a fixed sized vector in an euclidian space for each item, while similar items will be represented by similar vectors.
 \par
-The goal of this work is to explore the possibility of combining the two concepts such that a session-based recommendation system can make use of the quantifiable similarity between items.
+The arim of this thesis is to explore the possibility of combining the two concepts in order to enable a session-based recommendation system to make use of the quantifiable similarity between items.
