@@ -73,6 +73,7 @@ A good example of what is stripped away is the optimizer and the loss function n
 Given the fact that they are of no use in inference mode they are removed from the graph.
 After the model is serialized, it can be used together with a premade Docker image\footnote{\url{https://hub.docker.com/r/tensorflow/serving}} which allows the model to be served as a REST API.
 The inputs and outputs of the API are described in listing~\ref{code:tf_serve_input} and~\ref{code:tf_serve_output} respectively.
+
 \begin{minipage}{\linewidth}
     \begin{lstlisting}[language=Python,frame=single,caption=TF Serve API Input,label=code:tf_serve_input]
     {
@@ -108,6 +109,7 @@ Additionally it is reasonable to abstract the concept of embeddings and embeddin
 Therefore, we implemented a middleware which takes features known to the online shop and then prepares the features as well as transforms the outputs for the model API.
 The middleware thus accesses the afromentioned Key-Value store to keep the session and user embeddings up to date.
 The input and output of API exposed by the middleware is described in listings~\ref{code:api_input} and~\ref{code:api_output} respectively.
+
 \begin{minipage}{\linewidth}
     \begin{lstlisting}[language=Python,frame=single,caption=Middleware API Input,label=code:api_input]
     {

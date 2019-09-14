@@ -4,7 +4,7 @@
 \subsection{Problem Statement}
 Generally speaking, recommendation systems aim to support users in their decision making, while interacting with a large number of possible choices.
 They recommend items to users based on their historical preferences.
-Virtually, any decision-process can be made easier for users by providing recommendations.
+Virtually, any decision making process can be made easier for users by providing recommendations.
 Recommendation systems typically are used by online services, such as by Spotify for music~\cite{rec_spotify} and YouTube for videos~\cite{rec_yt}.
 By using these online services, users generate data that the service can use to improve the recommendations.
 To illustrate this point, rating videos indicates to the operator of the service how well the video is received by this specific user.
@@ -34,7 +34,7 @@ Thus, when generating recommendations for a specific user, the system tries to f
 \paragraph{Item-based}
 Item-based recommendation systems use mostly information about the item to produce recommendations, such as item type (e.g. genre of a movie).
 However, the basis for a recommendation is always a specific item, for example a product a user is looking at online.
-Thw item the user is currently interacting with is referred to as the "active item". 
+The item the user is currently interacting with is referred to as the "active item". 
 Usually, item-based recommendation systems then try to find similar items to the currently active item.
 The method of finding similar items can be arbitrarily complex, which is why identifying similar items is its own field of research.
 A common method is to combine this approach with a user-based component, where the similar items are sorted or filtered based on the user.
@@ -69,7 +69,7 @@ Therefore, we can extend the behavior (i.e. product views) of a user by looking 
 In contrast to collaborative recommendation systems, content-based systems heavily rely on so called content information.
 Content information refers to the actual content of different items.
 The name stems from early recommendation systems which mainly focussed on recommending media.
-Given the assumtpion that a user likes to see items that are similar to each other (e.g. a user who mostly likes action films), the idea is to actually analyze the content of an item, be it the images in a movie, the soundwaves of a song or the text in a book.
+Given the assumption that a user likes to see items that are similar to each other (e.g. a user who mostly likes action films), the idea is to actually analyze the content of an item, be it the images in a movie, the soundwaves of a song or the text in a book.
 However, this method can also be used in the context of online shopping, where the "content" of an item might be its textual description or an image of the actual product.
 \subsection{Popular Examples}
 In the following section, we will look at some popular examples of recommendation engines and their properties.
@@ -77,7 +77,7 @@ In the following section, we will look at some popular examples of recommendatio
 As the name suggests, this model is a collaborative approach to a recommendation engine, meaning the model uses primarily interaction data between users and items.
 As mentioned in~\cite{intro_recsys}, the main idea behind collaborative filtering is to recommend items to the user based on what users with similar taste liked in the past.
 Collaborative filtering refers to a class of models that use similar users' tastes to recommend items.
-Furthermor this class of models takes the user as a basis for recommendations and not the active item, making it a user-based recommendation system.
+Furthermore this class of models takes the user as a basis for recommendations, making it a user-based recommendation system.
 As seen in~\cite{collaborative_filtering}, there are many ways of implementing a collaborative filtering system.
 However, the essential part is the problem representation.
 
@@ -95,7 +95,7 @@ Usually, when dealing with such interaction data, this matrix is very sparse, si
 The main idea behind this approach is to fill in the missing entries of the matrix.
 In order to achieve this, two randomly randomly initialized matrices $U$ and $V$ are defined and when multiplied produce a matrix of the same shape as $U$.
 As explained in~\cite{collaborative_filtering}, these two matrices represent low rank representations of users and items respectively.
-The next step is to use an optimization algorithm to fit $U$ and $V$ such that $r_{ij} \approx UV_{ij}$.
+The next step is to use an optimization algorithm to fit $U$ and $V$ such that $r_{ij} \approx (UV)_{ij}$.
 The error of the chosen optimization algorithm however, is only applied to entries of $R$ which are known.
 Therefore, when we find $U$ and $V$ such that the values for the known entries match the values in $R$, we assume that we also found a good approximation for the values unkown in $R$ and use these to predict the interaction of the respective users and items.
 

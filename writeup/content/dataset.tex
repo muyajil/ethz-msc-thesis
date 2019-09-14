@@ -55,6 +55,7 @@ Using one of these lists\footnote{\url{https://raw.githubusercontent.com/monperr
 \paragraph{Aggregation of Events}
 The next step is to aggregate the events on two levels: first grouping events that were generated in the same session and second grouping these sessions by users.
 The resulting data structure looks as follows:
+
 \begin{minipage}{\linewidth}
     \begin{lstlisting}[language=Python,frame=single,caption=Data Structure for user-events,label=code:user-events]
     "<UserId_1>": {
@@ -81,6 +82,7 @@ Therefore, it is necessary to merge the data in the different shards, but since 
 As we will see later, it is further necessary that all the events produced by a single user are stored in the same file.
 An easy way of achieving this, is by partitioning by UserId.
 Each shard is processed as follows:
+
 \begin{minipage}{\linewidth}
     \begin{lstlisting}[language=Python,frame=single,caption=Merging shards,label=code:merging-shards]
     for shard in shards:
