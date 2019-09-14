@@ -81,7 +81,7 @@ Furthermor this class of models takes the user as a basis for recommendations an
 As seen in~\cite{collaborative_filtering}, there are many ways of implementing a collaborative filtering system.
 However, the essential part is the problem representation.
 
-\begin{figure}[ht]
+\begin{figure}[t]
 	\centering
 	\captionsetup{width=0.8\textwidth}
     \includegraphics[width=\textwidth]{collaborative_filtering.png}
@@ -111,7 +111,7 @@ When a user adds a product to the basket, the products with the highest count ar
 \section{Concepts}
 \subsection{Recurrent Neural Networks}\label{rnn}
 RNNs are a form of artificial neural networks, which allow to explicitly model sequence input data, because they allow the ouput of the network to be fed back in.
-\begin{figure}[ht]
+\begin{figure}[t]
 	\centering
 	\captionsetup{width=0.8\textwidth}
     \includegraphics[width=\textwidth]{rnn.png}
@@ -136,7 +136,7 @@ For clarification purposes, it is important to note that the individual inputs $
 In a feedforward neural network as illustrated in figure~\ref{fig:ffnn}, the inputs $x_i$ represent individual entries in the feature vector of the datapoint $x$.
 \subsubsection{Backpropagation}
 Backpropagation is the technique used to train neural networks.
-\begin{figure}[ht]
+\begin{figure}[t]
 	\centering
 	\captionsetup{width=0.8\textwidth}
     \includegraphics[width=0.8\textwidth]{ffnn.png}
@@ -209,7 +209,7 @@ A categorical variable is a variable that can take on one of a limited number of
 Examples are colors, locations or, in the context of e-commerce, product IDs.
 When using such variables as an input variable for some model, the variables need to be transformed into a numerical representation, allowing the variable to be used.
 Assuming that we have a variable which describes the color of a specific product -- for reasons of simplicity with only the four colors red, green, blue, and yellow -- one possibility would be to just integer IDs to the different colors as shown in table~\ref{tab:id_encoding}.
-\begin{table}[ht]
+\begin{table}[t]
     \centering
     \begin{tabular}{ll}\toprule
     \textbf{Color} & \textbf{ID} \\ \midrule
@@ -228,7 +228,7 @@ This is not desirable, in the case of colors, all of them should have the same m
 A different way of representing categorical variables is the so called one-hot encoding.
 A one-hot encoding requires a continuous ID space, such as the one in table~\ref{tab:id_encoding}.
 The same colors encoded in a one-hot encoding can be seen in table~\ref{tab:one_hot_encoding}.
-\begin{table}[ht]
+\begin{table}[t]
     \centering
     \begin{tabular}{ll}\toprule
         \textbf{Color} & \textbf{One-Hot Encoding} \\ \midrule
@@ -256,7 +256,7 @@ The difficulty with embeddings is finding a process which produces the embedding
 For a small number of variables it is possible to manually construct them.
 In table~\ref{tab:embedding}, we can see a lower dimensional representation of the same colors, however, the distance between green and yellow or blue is smaller than the one between green and red.
 As all the representations still have the same magnitude none of the colors triggers a stronger signal.
-\begin{table}[ht]
+\begin{table}[t]
     \centering
     \begin{tabular}{ll}\toprule
     
@@ -334,7 +334,7 @@ This makes it a user- and session-based recommendation system.
 The architecture presented is based on a model called \emph{gru4rec} presented in~\cite{gru4rec}.
 In figure~\ref{fig:hgru4rec}, we can see an illustration of the model architecture.
 Essentially, the difference between gru4rec and hgru4rec is the addition of the the second level GRU, $GRU_{u}$, which keeps track of historical user preferences.
-\begin{figure}[ht]
+\begin{figure}[t]
 	\centering
 	\captionsetup{width=0.8\textwidth}
     \includegraphics[width=\textwidth]{hgru4rec.png}

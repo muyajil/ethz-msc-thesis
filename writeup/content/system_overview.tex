@@ -12,7 +12,7 @@ After training Meta-Prod2Vec, the product embeddings are extracted and saved to 
 Afterwards hgru4rec can access this key-value store during training and inference such that the model can consume the product embeddings instead of the one-hot vectors.
 Further we will test hgru4rec without the user layer, to verify the improvement recorded by the authors of~\cite{hierarchical} using our dataset.
 Therefore this work investigates 4 different architectures documented in~\ref{tab:model_archs}.
-\begin{table}[ht]
+\begin{table}[t]
     \centering
     \begin{tabular}{llll}\toprule
         \textbf{Model Name} & \textbf{One-Hot} & \textbf{Embedding} & \textbf{User Layer} \\ \midrule
@@ -106,10 +106,10 @@ As can be deduced by looking at these listings the exported model itself does no
 This decision was made because of the production setup.
 To enable easy horizontal scaling of the recommendation system, the deployed application should be as stateless as possible.
 Horizontal scaling is important in this case, since at peak times there thousands of users online, serving all those with a single instance of the model is not possible.
-This can be achieved by storing all the embeddings and embedding Ids in a key-value store which supports concurrent access.
+This can be achieved by storing all the embeddings and embedding IDs in a key-value store which supports concurrent access.
 \par
-It also makes a lot of sense to abstract the concept of embeddings and embedding Ids from the online-shop requesting the recommendations.
-Therefore we implemented a middleware which takes features known to the online-shop and then prepares the features as well as transform the outputs for the model API.
+It also makes a lot of sense to abstract the concept of embeddings and embedding IDs from the online shop requesting the recommendations.
+Therefore we implemented a middleware which takes features known to the online shop and then prepares the features as well as transform the outputs for the model API.
 The middleware further access the afromentioned key-value store to keep session and user embeddings up to date.
 The input and output of API exposed by the middleware is described in listings~\ref{code:api_input} and~\ref{code:api_output} respectively.
 
@@ -130,16 +130,16 @@ The input and output of API exposed by the middleware is described in listings~\
     }
     \end{lstlisting}
 \end{minipage}
-This allows for a clear separation of domains, i.e. the online-shop does not know anything about the internals of the implementation of the model.
+This allows for a clear separation of domains, i.e. the online shop does not know anything about the internals of the implementation of the model.
 Further since the key-value store supports concurrent access, both the middleware and the model API can be horizontally scaled without the need for any further control.
 \section{Production Setup}
 Digitec Galaxus AG is the largest online-retailer in Switzerland.
-They operate galaxus.ch and digitec.ch. The former is a general online-shop comparable to Amazon. 
+They operate galaxus.ch and digitec.ch. The former is a general online shop comparable to Amazon. 
 The latter is specialized in Electronics.
 Distributed on the different sections of the site there are several recommendation engines populating the content the users see.
 Examples are the landing page and multiple engines on the product detail page seen in figures~\ref{fig:homepage_recs} and~\ref{fig:product_detail_recs} respectively.
 
-\begin{figure}[ht]
+\begin{figure}[t]
 	\centering
 	\captionsetup{width=0.8\textwidth}
     \includegraphics[width=\textwidth]{homepage-recs.png}
@@ -147,7 +147,7 @@ Examples are the landing page and multiple engines on the product detail page se
     \label{fig:homepage_recs}
 \end{figure}
 
-\begin{figure}[ht]
+\begin{figure}[t]
 	\centering
 	\captionsetup{width=0.8\textwidth}
     \includegraphics[width=\textwidth]{product-detail-recs.png}
@@ -162,7 +162,7 @@ The specific tests and the test setup is described in~\ref{sec:exp_setup}, for t
 Using the API containers described in~\ref{sec:api} we can serve these requests.
 The sequence-diagram in figure~\ref{fig:serving_recs} should give an overview on how the system is integrated in the production environment.
 
-\begin{figure}[ht]
+\begin{figure}[t]
 	\centering
 	\captionsetup{width=0.8\textwidth}
     \includegraphics[width=\textwidth]{serving-recommendations.png}
@@ -171,7 +171,7 @@ The sequence-diagram in figure~\ref{fig:serving_recs} should give an overview on
 \end{figure}
 
 The whole process starts when a specific user requests a specific page on either digitec.ch or galaxus.ch.
-If the requested page has an element where there is an A/B test configured the Online-Shop Application will make a request to the testing engine.
+If the requested page has an element where there is an A/B test configured the online shop Application will make a request to the testing engine.
 The testing engine will return the API location of one of the model versions
 After that the Online Shop will request the content, in this case, from the Personalization Infrastructure.
 Note that during this setup each of the four versions of the model is deployed simultaneously, all of them trained on the same dataset.
@@ -179,4 +179,4 @@ The Personalization Infrastructure then calls the Middleware described above.
 Before requesting a prediction from tf-serve the Middleware will gather precomputed embeddings for the involved entities.
 The predictions are returned to the Personalization Infrastructure and from there to the Online Shop.
 The last step is for the Online Shop to render the content and deliver the page to the user.
-This process takes about 300ms.
+This process takes about 300ms.goal with this
